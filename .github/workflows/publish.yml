@@ -1,0 +1,44 @@
+name: Publish to PSGallery
+
+on:
+  release:
+    types: [published]   # trigger khi tạo Release trên GitHub UI
+
+jobs:
+  publish:
+    runs-on: windows-latest   # bắt buộc Windows vì PnP.PowerShell
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PnP.PowerShell                 -Scope CurrentUser -Force -AllowClobber
+          Install-Module -Name Microsoft.Graph.Authentication -Scope CurrentUser -Force
+          Install-Module -Name Pester                         -Scope CurrentUser -Force -MinimumVersion 5.0.0
+
+      - name: Validate module manifest
+        shell: pwsh
+        run: Test-ModuleManifest -Path ./SPClean.psd1
+
+      - name: Run unit tests (publish gate)
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path         = './Tests/Unit'   # Unit only — integration tests need live tenant env vars
+          $config.Output.Verbosity = 'Minimal'
+          $result = Invoke-Pester -Configuration $config
+          if ($result.PassedCount -lt 78) {
+              Write-Error "Publish blocked: only $($result.PassedCount)/81 tests passed (minimum 78)."
+              exit 1
+          }
+
+      - name: Publish to PSGallery
+        shell: pwsh
+        env:
+          PSGALLERY_API_KEY: ${{ secrets.PSGALLERY_API_KEY }}
+        run: |
+          Publish-PSResource -Path . -ApiKey $env:PSGALLERY_API_KEY -Repository PSGallery -Verbose

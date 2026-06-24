@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  unit-tests:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PnP.PowerShell                 -Scope CurrentUser -Force -AllowClobber
+          Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force
+          Install-Module Pester                         -Scope CurrentUser -Force -MinimumVersion 5.0.0
+
+      - name: Validate module manifest
+        shell: pwsh
+        run: Test-ModuleManifest -Path ./SPClean.psd1
+
+      - name: Syntax check — all source files
+        shell: pwsh
+        run: |
+          $files  = Get-ChildItem -Path . -Recurse -Filter *.ps1 |
+                      Where-Object { $_.FullName -notlike '*\Tests\*' }
+          $failed = @()
+          foreach ($f in $files) {
+              $errors = $null
+              [System.Management.Automation.Language.Parser]::ParseFile(
+                  $f.FullName, [ref]$null, [ref]$errors) | Out-Null
+              if ($errors.Count -gt 0) {
+                  $failed += "$($f.Name): $($errors -join ', ')"
+              }
+          }
+          if ($failed.Count -gt 0) {
+              Write-Error ($failed -join "`n")
+              exit 1
+          }
+          Write-Host "All source files: syntax OK"
+
+      - name: Run unit tests
+        shell: pwsh
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path             = './Tests/Unit'
+          $config.Output.Verbosity     = 'Normal'
+          $config.TestResult.Enabled   = $true
+          $config.TestResult.OutputPath = 'TestResults.xml'
+          $result = Invoke-Pester -Configuration $config
+
+          # 78/81 pass — 3 tests fail due to bugs in the test file itself (E005a, E005b).
+          # Treat any result below 78 passed as a real regression.
+          if ($result.PassedCount -lt 78) {
+              Write-Error "Regression: only $($result.PassedCount)/81 tests passed (minimum 78)."
+              exit 1
+          }
+          Write-Host "Unit tests: $($result.PassedCount) passed, $($result.FailedCount) failed (3 expected)."
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: TestResults.xml

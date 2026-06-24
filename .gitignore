@@ -1,0 +1,37 @@
+# Certificates — never commit private keys or .pfx files
+*.pfx
+*.p12
+*.key
+*.cer
+
+# Generated runtime output
+SPClean_Snapshots/
+Reports/
+TestResults*.xml
+*.log
+
+# Environment / secrets
+.env
+.env.*
+
+# OS noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# PowerShell temp
+*-Transcript.txt
+
+# AI / Claude Code — not for public distribution
+.claude/
+CLAUDE.md
+docs/PLAN.md
+docs/PROGRESS.md
+docs/ERRORS.md
+docs/SRS_SPClean_M01_v1.0.docx
+SRS_SPClean_M01_v1.0.docx
+*.docx
