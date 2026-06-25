@@ -41,11 +41,11 @@ Get-SPCOrphanedUser -AllSites |
 - [Installation](#installation)
 - [Authentication setup](#authentication-setup)
 - [Quick start](#quick-start)
+- [Licensing](#licensing)
 - [Cmdlet reference](#cmdlet-reference)
 - [Permission requirements](#permission-requirements)
 - [Scheduling automated scans](#scheduling-automated-scans)
 - [Snapshot and recovery](#snapshot-and-recovery)
-- [Output types](#output-types)
 - [Troubleshooting](#troubleshooting)
 - [Security notes](#security-notes)
 
@@ -87,7 +87,7 @@ Verify the import:
 Get-Command -Module SPClean
 ```
 
-Expected output: `Connect-SPCTenant`, `Disconnect-SPCTenant`, `Get-SPCOrphanedUser`, `Export-SPCReport`, `Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`.
+Expected output: `Connect-SPCTenant`, `Disconnect-SPCTenant`, `Get-SPCOrphanedUser`, `Export-SPCReport`, `Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`, `Register-SPCLicense`, `Get-SPCLicenseInfo`.
 
 **Install from PowerShell Gallery:**
 
@@ -202,6 +202,70 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
 # 6. Disconnect
 Disconnect-SPCTenant
 ```
+
+---
+
+## Licensing
+
+SPClean uses a **key-based license** verified entirely offline — no internet check, no phone-home.
+
+### Tiers
+
+| Feature | Free | Pro | Consultant |
+| --- | :---: | :---: | :---: |
+| Orphan detection (`Get-SPCOrphanedUser`) | ✅ | ✅ | ✅ |
+| CSV and JSON reports | ✅ | ✅ | ✅ |
+| HTML report with risk badges and sorting | — | ✅ | ✅ |
+| Snapshot backup before removal (`-CreateSnapshot`) | — | ✅ | ✅ |
+| Restore permissions from snapshot | — | ✅ | ✅ |
+| Scheduled automated scans | — | ✅ | ✅ |
+| Intended use | Personal / evaluation | Single-org admin | MSP / multi-tenant consultant |
+
+> **Free** lets you scan every site and export CSV/JSON reports without a key — enough to identify and audit orphans. **Pro** and **Consultant** unlock the full remediation and automation workflow.
+
+### Check your current license status
+
+```powershell
+Get-SPCLicenseInfo
+```
+
+```
+Status      : Unlicensed
+Tier        : FREE
+Email       :
+ExpiresAt   :
+```
+
+### Activate a license
+
+After purchasing from [spclean.gumroad.com](https://spclean.gumroad.com) you will receive a key in the format `SPCLEAN-PRO-…` by email.
+
+```powershell
+Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>'
+```
+
+The key is validated offline (HMAC-SHA256), written to `%APPDATA%\SPClean\license.lic`, and takes effect immediately — no restart required.
+
+```powershell
+# Verify activation
+Get-SPCLicenseInfo
+
+# Status      : Active
+# Tier        : PRO
+# Email       : you@contoso.com
+# ExpiresAt   : 2027-06-25 00:00:00
+```
+
+### What happens when a feature requires a license
+
+```
+Export-SPCReport: ERR-LIC-003: 'HTMLReport' requires a Pro or Consultant license.
+Current status: Unlicensed.
+→ Purchase at: https://spclean.gumroad.com
+→ Register with: Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-...'
+```
+
+`-WhatIf` on write cmdlets always works without a license — preview is never gated.
 
 ---
 
@@ -415,6 +479,67 @@ New-SPCScanSchedule -TenantName contoso `
     -CertificatePassword $certPwd `
     -Schedule        Weekly `
     -ReportOutputPath C:\Reports\SPClean
+```
+
+---
+
+### `Register-SPCLicense`
+
+Validates and activates a license key. Writes `%APPDATA%\SPClean\license.lic` and clears the module cache so the new tier takes effect in the current session.
+
+```
+Register-SPCLicense
+    -LicenseKey <string>   # Required. 'SPCLEAN-PRO-…' or 'SPCLEAN-CONSULTANT-…'
+    [-WhatIf]
+    [-Confirm]
+```
+
+Returns: `SPC.LicenseInfo`
+
+```powershell
+# Activate
+Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>'
+
+# Preview (validate key without writing the file)
+Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>' -WhatIf
+```
+
+**Error codes:**
+
+| Code | Meaning |
+| --- | --- |
+| `ERR-LIC-001` | Key format is invalid or signature does not match |
+| `ERR-LIC-002` | Key has expired |
+
+---
+
+### `Get-SPCLicenseInfo`
+
+Returns the current license status from the module cache or disk. Never throws — safe to call at any time.
+
+```
+Get-SPCLicenseInfo
+```
+
+Returns: `SPC.LicenseInfo`
+
+| Property | Description |
+| --- | --- |
+| `Status` | `Active`, `Expired`, `Invalid`, or `Unlicensed` |
+| `Tier` | `FREE`, `PRO`, or `CONSULTANT` |
+| `Email` | Email address the license was issued to |
+| `ExpiresAt` | License expiry date (UTC) |
+| `RegisteredAt` | Date the license was registered on this machine |
+| `LicenseId` | Unique license identifier |
+
+```powershell
+# Check status
+Get-SPCLicenseInfo
+
+# Conditional logic
+if ((Get-SPCLicenseInfo).Status -ne 'Active') {
+    Write-Warning 'HTML reports and scheduled scans require a Pro license.'
+}
 ```
 
 ---
