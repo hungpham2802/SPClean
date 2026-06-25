@@ -29,6 +29,9 @@ Desktop.ini
 # Vendor tools — not shipped in PSGallery package
 tools/
 
+# Manual testing workspace — local only, may contain real tenant data
+ManualTest/
+
 # AI / Claude Code — not for public distribution
 .claude/
 CLAUDE.md
