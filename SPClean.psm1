@@ -21,5 +21,7 @@ Export-ModuleMember -Function (
     'Export-SPCReport',
     'Remove-SPCOrphanedUser',
     'Restore-SPCOrphanedUser',
-    'New-SPCScanSchedule'
+    'New-SPCScanSchedule',
+    'Register-SPCLicense',
+    'Get-SPCLicenseInfo'
 )

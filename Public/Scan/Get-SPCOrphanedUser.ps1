@@ -143,7 +143,9 @@ function Get-SPCOrphanedUser {
             $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
             switch ($Ctx.AuthMethod) {
                 'Interactive' {
-                    Connect-PnPOnline -Url $SiteUrl -Interactive -ClientId $Ctx._ClientId -ReturnConnection
+                    $pnpArgs = @{ Url = $SiteUrl; Interactive = $true; ReturnConnection = $true }
+                    if (-not [string]::IsNullOrEmpty($Ctx._ClientId)) { $pnpArgs['ClientId'] = $Ctx._ClientId }
+                    Connect-PnPOnline @pnpArgs
                 }
                 'AppOnly' {
                     if ($Ctx._CertificatePath) {

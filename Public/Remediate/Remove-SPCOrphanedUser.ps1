@@ -83,6 +83,10 @@ function Remove-SPCOrphanedUser {
     begin {
         Test-SPCConnection
 
+        if ($CreateSnapshot -and -not $WhatIfPreference) {
+            Assert-SPCProLicense -Feature 'SnapshotBackup'
+        }
+
         if ($Force -and -not $WhatIfPreference) {
             Write-Warning 'Remove-SPCOrphanedUser: -Force is set — confirmation prompts suppressed.'
         }
@@ -101,7 +105,9 @@ function Remove-SPCOrphanedUser {
             $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
             switch ($Ctx.AuthMethod) {
                 'Interactive' {
-                    Connect-PnPOnline -Url $Url -Interactive -ClientId $Ctx._ClientId -ReturnConnection
+                    $pnpArgs = @{ Url = $Url; Interactive = $true; ReturnConnection = $true }
+                    if (-not [string]::IsNullOrEmpty($Ctx._ClientId)) { $pnpArgs['ClientId'] = $Ctx._ClientId }
+                    Connect-PnPOnline @pnpArgs
                 }
                 'AppOnly' {
                     if ($Ctx._CertificatePath) {

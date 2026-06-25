@@ -20,7 +20,8 @@ function Disconnect-SPCTenant {
             # SRS 3.1.2: always succeeds — wrap every call individually
             try { Disconnect-PnPOnline -ErrorAction SilentlyContinue } catch {}
             try { Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null } catch {}
-            $script:SPCContext = $null
+            $script:SPCContext      = $null
+            $script:SPCLicenseCache = $null
             Write-Verbose 'SPClean: Disconnected from tenant.'
         }
     }

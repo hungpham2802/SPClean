@@ -21,6 +21,8 @@
         'Remove-SPCOrphanedUser'
         'Restore-SPCOrphanedUser'
         'New-SPCScanSchedule'
+        'Register-SPCLicense'
+        'Get-SPCLicenseInfo'
     )
 
     CmdletsToExport   = @()

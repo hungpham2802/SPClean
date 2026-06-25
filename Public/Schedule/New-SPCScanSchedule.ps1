@@ -66,6 +66,8 @@ function New-SPCScanSchedule {
     )
 
     process {
+        Assert-SPCProLicense -Feature 'ScheduledScan'
+
         # Resolve and validate paths
         $resolvedCert = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($CertificatePath)
         if (-not (Test-Path -Path $resolvedCert -PathType Leaf)) {

@@ -52,6 +52,9 @@ function Export-SPCReport {
 
     begin {
         Test-SPCConnection
+        if ($Format -ieq 'HTML') {
+            Assert-SPCProLicense -Feature 'HTMLReport'
+        }
         $collected = [System.Collections.Generic.List[PSCustomObject]]::new()
     }
 

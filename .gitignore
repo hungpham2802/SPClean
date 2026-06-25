@@ -26,6 +26,9 @@ Desktop.ini
 # PowerShell temp
 *-Transcript.txt
 
+# Vendor tools — not shipped in PSGallery package
+tools/
+
 # AI / Claude Code — not for public distribution
 .claude/
 CLAUDE.md
@@ -33,5 +36,7 @@ docs/PLAN.md
 docs/PROGRESS.md
 docs/ERRORS.md
 docs/SRS_SPClean_M01_v1.0.docx
+SRS_SPClean_LicenseKeySystem_v1_0.md
+CLAUDE_CODE_LicenseSystem_Instructions.md
 SRS_SPClean_M01_v1.0.docx
 *.docx
