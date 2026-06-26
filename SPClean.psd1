@@ -1,6 +1,6 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '1.0.0'
+    ModuleVersion     = '1.1.0'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'Hung Pham'          # TODO: replace with your name
     CompanyName       = 'Community'       # TODO: replace or set to 'Community'
@@ -37,6 +37,12 @@
             ProjectUri   = 'https://github.com/hungpham2802/SPClean'
             LicenseUri   = 'https://github.com/hungpham2802/SPClean/blob/main/LICENSE'
             ReleaseNotes = @'
+## 1.1.0 — 2026-06-26
+- Register-SPCLicense: offline HMAC-SHA256 license key activation
+- Get-SPCLicenseInfo: query current tier (FREE / PRO / CONSULTANT)
+- Feature gates: HTML report, CreateSnapshot, Restore, Schedule require Pro/Consultant
+- MkDocs Material documentation site (https://hungpham2802.github.io/spclean)
+
 ## 1.0.0 — 2026-06-22
 - Connect-SPCTenant: Interactive and AppOnly (certificate/secret) auth
 - Get-SPCOrphanedUser: detects Deleted, SoftDeleted, Disabled, GuestOrphaned accounts

@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); version
 
 ---
 
+## [1.1.0] — 2026-06-26
+
+[PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.0) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.0)
+
+### Added
+- **Register-SPCLicense** — activates a `SPCLEAN-PRO-…` or `SPCLEAN-CONSULTANT-…` key; validated offline via HMAC-SHA256 with no network calls; writes `%APPDATA%\SPClean\license.lic`; supports `-WhatIf`, `-Confirm`, `-Force`
+- **Get-SPCLicenseInfo** — returns current license status (`Active` / `Expired` / `Invalid` / `Unlicensed`), tier (`FREE` / `PRO` / `CONSULTANT`), email, expiry, and registration date; reads from in-memory cache then disk; never throws
+- **License feature gates** — HTML report (`Export-SPCReport -Format HTML`), permission snapshot (`Remove-SPCOrphanedUser -CreateSnapshot`), restore (`Restore-SPCOrphanedUser`), and scheduled scan (`New-SPCScanSchedule`) now require a Pro or Consultant license; `-WhatIf` on all write cmdlets remains ungated
+- **`Private/LicenseManager.ps1`** — crypto engine: `Test-SPCLicenseKey` (fixed-length 43-char sig extraction), `Assert-SPCProLicense`, `Assert-SPCConsultantLicense`, `$script:SPCLicenseCache`; PS 5.1-compatible Base64URL and constant-time byte comparison helpers
+- **MkDocs Material documentation site** at `https://hungpham2802.github.io/spclean` — Getting Started, full cmdlet reference (one page per cmdlet), Licensing section with pricing and activation guide
+
+### Changed
+- `Disconnect-SPCTenant` now clears `$script:SPCLicenseCache` on disconnect
+- `SPClean.psd1` FunctionsToExport updated to include `Register-SPCLicense` and `Get-SPCLicenseInfo`
+- Interactive auth `$connectToSite` blocks now use conditional splatting for `-ClientId` to avoid empty-string parameter rejection in PnP 3.x when ClientId is null
+
+### Fixed
+- `Private/Test-SPCConnection.ps1` — added no-op compatibility stubs for `Assert-SPCProLicense` / `Assert-SPCConsultantLicense` so existing unit tests that dot-source this file directly do not fail with `CommandNotFoundException`
+
+### Security
+- License keys are verified with constant-time byte comparison to prevent timing attacks
+- HMAC secret is injected at CI build time via `tools/Inject-Secret.ps1`; the placeholder value in source is non-functional
+
+---
+
 ## [1.0.0] — 2026-06-23
 
 [PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.0.0) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.0.0)

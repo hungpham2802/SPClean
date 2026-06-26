@@ -31,8 +31,8 @@ jobs:
           $config.Run.Path         = './Tests/Unit'   # Unit only — integration tests need live tenant env vars
           $config.Output.Verbosity = 'Minimal'
           $result = Invoke-Pester -Configuration $config
-          if ($result.PassedCount -lt 78) {
-              Write-Error "Publish blocked: only $($result.PassedCount)/81 tests passed (minimum 78)."
+          if ($result.PassedCount -lt 120) {
+              Write-Error "Publish blocked: only $($result.PassedCount)/130 tests passed (minimum 120)."
               exit 1
           }
 
