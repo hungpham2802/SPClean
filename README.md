@@ -89,7 +89,7 @@ Get-Command -Module SPClean
 
 Expected output: `Connect-SPCTenant`, `Disconnect-SPCTenant`, `Get-SPCOrphanedUser`, `Export-SPCReport`, `Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`, `Register-SPCLicense`, `Get-SPCLicenseInfo`.
 
-**Install from PowerShell Gallery:**
+**Install from PowerShell Gallery (recommended):**
 
 ```powershell
 Install-PSResource -Name SPClean   # recommended (PSResourceGet)
@@ -97,7 +97,8 @@ Install-PSResource -Name SPClean   # recommended (PSResourceGet)
 Install-Module -Name SPClean       # legacy PowerShellGet
 ```
 
-> [SPClean on PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean)
+[![PSGallery](https://img.shields.io/powershellgallery/v/SPClean?label=PSGallery&color=5391FE&logo=powershell&logoColor=white)](https://www.powershellgallery.com/packages/SPClean)
+[![PSGallery Downloads](https://img.shields.io/powershellgallery/dt/SPClean?label=Downloads&color=28a745)](https://www.powershellgallery.com/packages/SPClean)
 
 ---
 
@@ -213,15 +214,22 @@ SPClean uses a **key-based license** verified entirely offline — no internet c
 
 | Feature | Free | Pro | Consultant |
 | --- | :---: | :---: | :---: |
+| **Price** | $0 forever | **$79 / tenant / year** | **$149 / year** |
 | Orphan detection (`Get-SPCOrphanedUser`) | ✅ | ✅ | ✅ |
 | CSV and JSON reports | ✅ | ✅ | ✅ |
+| Unlimited sites per scan | ✅ | ✅ | ✅ |
 | HTML report with risk badges and sorting | — | ✅ | ✅ |
 | Snapshot backup before removal (`-CreateSnapshot`) | — | ✅ | ✅ |
 | Restore permissions from snapshot | — | ✅ | ✅ |
 | Scheduled automated scans | — | ✅ | ✅ |
+| **Unlimited tenants** | — | — | ✅ |
+| White-label HTML report (`-BrandingName`) | — | — | 🔜 v1.1 |
+| Priority support | — | — | ✅ |
 | Intended use | Personal / evaluation | Single-org admin | MSP / multi-tenant consultant |
 
 > **Free** lets you scan every site and export CSV/JSON reports without a key — enough to identify and audit orphans. **Pro** and **Consultant** unlock the full remediation and automation workflow.
+
+[→ Purchase on Gumroad](https://hungpham2802.gumroad.com)
 
 ### Check your current license status
 
@@ -238,7 +246,7 @@ ExpiresAt   :
 
 ### Activate a license
 
-After purchasing from [spclean.gumroad.com](https://spclean.gumroad.com) you will receive a key in the format `SPCLEAN-PRO-…` by email.
+After purchasing from [Gumroad](https://hungpham2802.gumroad.com) you will receive a key in the format `SPCLEAN-PRO-…` by email.
 
 ```powershell
 Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>'
@@ -261,7 +269,7 @@ Get-SPCLicenseInfo
 ```
 Export-SPCReport: ERR-LIC-003: 'HTMLReport' requires a Pro or Consultant license.
 Current status: Unlicensed.
-→ Purchase at: https://spclean.gumroad.com
+→ Purchase at: https://hungpham2802.gumroad.com
 → Register with: Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-...'
 ```
 
@@ -490,6 +498,7 @@ Validates and activates a license key. Writes `%APPDATA%\SPClean\license.lic` an
 ```
 Register-SPCLicense
     -LicenseKey <string>   # Required. 'SPCLEAN-PRO-…' or 'SPCLEAN-CONSULTANT-…'
+    [-Force]               # Overwrite existing license.lic without prompting
     [-WhatIf]
     [-Confirm]
 ```
@@ -510,6 +519,8 @@ Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>' -WhatIf
 | --- | --- |
 | `ERR-LIC-001` | Key format is invalid or signature does not match |
 | `ERR-LIC-002` | Key has expired |
+| `ERR-LIC-003` | Feature requires a Pro or Consultant license |
+| `ERR-LIC-004` | Feature requires a Consultant license |
 
 ---
 
