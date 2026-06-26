@@ -239,7 +239,7 @@ function Remove-SPCOrphanedUser {
                 Write-Verbose "Remove-SPCOrphanedUser: Removed $($item.UPN) from UIL at $($item.SiteUrl)"
             } catch {
                 $errorMsg = "UIL removal failed: $($_.Exception.Message)"
-                Write-Error "Remove-SPCOrphanedUser: $errorMsg [$($item.UPN) at $($item.SiteUrl)]"
+                Write-Error "Remove-SPCOrphanedUser: $errorMsg [$($item.UPN) at $($item.SiteUrl)]" -ErrorAction Continue
                 $errorCount++
             }
 

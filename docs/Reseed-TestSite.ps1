@@ -112,7 +112,7 @@ foreach ($key in $restoredUpns.Keys) {
             -Uri "https://graph.microsoft.com/v1.0/users/$objectId" | Out-Null
         Write-Host "  Deleted $key from Entra" -ForegroundColor Green
     } catch {
-        Write-Warning "  Could not delete $key: $($_.Exception.Message)"
+        Write-Warning "  Could not delete ${key}: $($_.Exception.Message)"
     }
 }
 
