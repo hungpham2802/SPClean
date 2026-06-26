@@ -9,6 +9,7 @@ SPClean_Snapshots/
 Reports/
 TestResults*.xml
 *.log
+site/                  # mkdocs build output
 
 # Environment / secrets
 .env

@@ -1,0 +1,75 @@
+site_name: SPClean
+site_description: PowerShell toolkit for SharePoint Online permission hygiene
+site_url: https://hungpham2802.github.io/spclean
+repo_url: https://github.com/hungpham2802/spclean
+repo_name: hungpham2802/SPClean
+edit_uri: ""
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: light blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.top
+    - navigation.sections
+    - navigation.indexes
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+exclude_docs: |
+  PLAN.md
+  PROGRESS.md
+  ERRORS.md
+  DECISIONS.md
+  *.ps1
+  *.docx
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Authentication: getting-started/authentication.md
+    - Quick Start: getting-started/quickstart.md
+  - Cmdlet Reference:
+    - Overview: cmdlets/index.md
+    - Connect-SPCTenant: cmdlets/connect-spctenant.md
+    - Disconnect-SPCTenant: cmdlets/disconnect-spctenant.md
+    - Get-SPCOrphanedUser: cmdlets/get-spcorphaneduser.md
+    - Export-SPCReport: cmdlets/export-spcreport.md
+    - Remove-SPCOrphanedUser: cmdlets/remove-spcorphaneduser.md
+    - Restore-SPCOrphanedUser: cmdlets/restore-spcorphaneduser.md
+    - New-SPCScanSchedule: cmdlets/new-spcscanschedule.md
+    - Register-SPCLicense: cmdlets/register-spclicense.md
+    - Get-SPCLicenseInfo: cmdlets/get-spclicenseinfo.md
+  - Licensing: licensing.md
