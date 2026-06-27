@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); version
 
 ---
 
+## [1.1.6] — 2026-06-27
+
+[PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.6) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.6)
+
+### Fixed
+- `New-SPCScanSchedule`: scheduled task opened a visible PowerShell console window when it ran. Added `-WindowStyle Hidden` to the `pwsh.exe` arguments in the task action so the scan runs silently in the background.
+
+---
+
 ## [1.1.5] — 2026-06-27
 
 [PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.5) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.5)

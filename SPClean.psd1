@@ -1,6 +1,6 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '1.1.5'
+    ModuleVersion     = '1.1.6'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'Hung Pham'          # TODO: replace with your name
     CompanyName       = 'Community'       # TODO: replace or set to 'Community'
@@ -37,6 +37,9 @@
             ProjectUri   = 'https://github.com/hungpham2802/SPClean'
             LicenseUri   = 'https://github.com/hungpham2802/SPClean/blob/main/LICENSE'
             ReleaseNotes = @'
+## 1.1.6 — 2026-06-27
+- Fix: New-SPCScanSchedule scheduled task no longer opens a visible PowerShell window (-WindowStyle Hidden added)
+
 ## 1.1.5 — 2026-06-27
 - Fix: New-SPCScanSchedule incorrectly detected Windows as non-Windows (Get-Variable $IsWindows unreliable inside module scope); replaced with [System.Environment]::OSVersion.Platform check
 

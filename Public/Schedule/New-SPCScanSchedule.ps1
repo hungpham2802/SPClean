@@ -179,7 +179,7 @@ try {
 
                 $action  = New-ScheduledTaskAction `
                     -Execute  $pwshPath `
-                    -Argument "-NonInteractive -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+                    -Argument "-NonInteractive -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$scriptPath`""
 
                 $trigger = if ($PSCmdlet.ParameterSetName -eq 'OneTime') {
                     New-ScheduledTaskTrigger -Once -At $ScheduleAt
