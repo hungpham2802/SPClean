@@ -43,9 +43,12 @@ jobs:
         env:
           SPCLEAN_SECRET_KEY: ${{ secrets.SPCLEAN_SECRET_KEY }}
         run: |
-          .\tools\Inject-Secret.ps1 `
-              -SourceFile .\Private\LicenseManager.ps1 `
-              -OutputFile .\Private\LicenseManager.ps1
+          $file     = Join-Path $pwd 'Private\LicenseManager.ps1'
+          $content  = Get-Content $file -Raw -Encoding UTF8
+          $injected = $content.Replace("'REPLACE_AT_BUILD_TIME_DO_NOT_COMMIT'", "'$env:SPCLEAN_SECRET_KEY'")
+          if ($injected -eq $content) { Write-Warning 'Placeholder not found in LicenseManager.ps1'; exit 1 }
+          [System.IO.File]::WriteAllText($file, $injected, [System.Text.UTF8Encoding]::new($false))
+          Write-Host "Secret injected into Private/LicenseManager.ps1"
 
       - name: Remove .git folder before packaging
         shell: pwsh
