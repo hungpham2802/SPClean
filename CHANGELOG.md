@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); version
 
 ---
 
+## [1.1.3] — 2026-06-27
+
+[PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.3) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.3)
+
+### Fixed
+- `Export-SPCReport` HTML footer: version displayed as `System.Object[]` when multiple module instances loaded. Fixed by adding `Select-Object -First 1` when calling `Get-Module SPClean`.
+
+---
+
 ## [1.1.2] — 2026-06-27
 
 [PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.2) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.2)

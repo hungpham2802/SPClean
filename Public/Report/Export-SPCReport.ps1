@@ -72,7 +72,7 @@ function Export-SPCReport {
         $ext         = switch ($Format) { 'CSV' { 'csv' } 'HTML' { 'html' } 'JSON' { 'json' } }
         $tenantName  = if ($script:SPCContext) { $script:SPCContext.TenantName } else { 'unknown' }
         $generatedAt = (Get-Date).ToUniversalTime()
-        $moduleVer   = (Get-Module SPClean -ErrorAction SilentlyContinue).Version
+        $moduleVer   = (Get-Module SPClean -ErrorAction SilentlyContinue | Select-Object -First 1).Version
         $moduleVer   = if ($moduleVer) { $moduleVer.ToString() } else { '1.0.0' }
 
         if ([string]::IsNullOrWhiteSpace($OutputPath)) {
