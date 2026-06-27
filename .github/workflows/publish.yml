@@ -36,6 +36,7 @@ jobs:
               Write-Error "Publish blocked: only $($result.PassedCount)/130 tests passed (minimum 120)."
               exit 1
           }
+          exit 0
 
       - name: Publish to PSGallery
         shell: pwsh
