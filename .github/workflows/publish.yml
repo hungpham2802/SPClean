@@ -38,6 +38,10 @@ jobs:
           }
           exit 0
 
+      - name: Remove .git folder before packaging
+        shell: pwsh
+        run: Remove-Item -Recurse -Force .git -ErrorAction SilentlyContinue
+
       - name: Publish to PSGallery
         shell: pwsh
         env:

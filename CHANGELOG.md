@@ -5,6 +5,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); version
 
 ---
 
+## [1.1.1] — 2026-06-27
+
+[PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.1) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.1)
+
+### Fixed
+- Exclude `.git` folder from PSGallery package by removing it before `Publish-PSResource` runs in CI
+
+---
+
 ## [1.1.0] — 2026-06-26
 
 [PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.0) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.0)
