@@ -50,30 +50,6 @@ By default, only orphans with `OrphanType = Deleted` are processed. To include s
 Remove-SPCOrphanedUser -OrphanType Deleted,SoftDeleted,Disabled
 ```
 
-## Examples
-
-=== "WhatIf preview"
-
-    ```powershell
-    # See what would be removed — no changes made
-    Get-SPCOrphanedUser -SiteUrl $url | Remove-SPCOrphanedUser -WhatIf
-    ```
-
-=== "Remove HIGH-risk with snapshot"
-
-    ```powershell
-    Get-SPCOrphanedUser -SiteUrl $url |
-        Remove-SPCOrphanedUser -RiskLevel HIGH -CreateSnapshot -SnapshotPath C:\Snapshots
-    ```
-
-=== "Remove all orphan types"
-
-    ```powershell
-    # Use with care — processes SoftDeleted and Disabled as well
-    Get-SPCOrphanedUser -SiteUrl $url -IncludeDisabled |
-        Remove-SPCOrphanedUser -OrphanType Deleted,SoftDeleted,Disabled -CreateSnapshot -SnapshotPath C:\Snapshots
-    ```
-
 ## Snapshot files
 
 When `-CreateSnapshot` is used, one JSON file is written per user before removal:
@@ -86,8 +62,40 @@ C:\Snapshots\
 
 Use `Restore-SPCOrphanedUser` to re-apply permissions from a snapshot.
 
+## Notes
+
+- **`-CreateSnapshot` is gated** — saving a permission snapshot before removal requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
+- `-WhatIf` is always available on all tiers and performs no writes.
+- Always run with `-WhatIf` first when processing a new site to confirm the scope before committing.
+- The cmdlet emits one `SPC.RemovalResult` object per input record, so results can be piped to `Where-Object` to filter successes and failures.
+
+## Examples
+
+=== "WhatIf preview"
+
+    ```powershell
+    # Preview what would be removed — no changes are made
+    Get-SPCOrphanedUser -SiteUrl $url | Remove-SPCOrphanedUser -WhatIf
+    ```
+
+=== "Remove HIGH-risk with snapshot"
+
+    ```powershell
+    # Remove HIGH-risk deleted users, saving a snapshot before each removal [Pro]
+    Get-SPCOrphanedUser -SiteUrl $url |
+        Remove-SPCOrphanedUser -RiskLevel HIGH -CreateSnapshot -SnapshotPath C:\Snapshots
+    ```
+
+=== "Remove all orphan types"
+
+    ```powershell
+    # Use with care — also processes SoftDeleted and Disabled accounts
+    Get-SPCOrphanedUser -SiteUrl $url -IncludeDisabled |
+        Remove-SPCOrphanedUser -OrphanType Deleted,SoftDeleted,Disabled -CreateSnapshot -SnapshotPath C:\Snapshots
+    ```
+
 ## See also
 
 - [Get-SPCOrphanedUser](get-spcorphaneduser.md)
 - [Restore-SPCOrphanedUser](restore-spcorphaneduser.md)
-- [Snapshot and recovery](../getting-started/quickstart.md#restore-after-accidental-removal)
+- [Licensing](../licensing.md)

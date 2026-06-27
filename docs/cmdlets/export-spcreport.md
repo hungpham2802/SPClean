@@ -59,11 +59,18 @@ Export-SPCReport
 - Root object grouped by the `-GroupBy` field
 - Optional `summary` block when `-IncludeSummary` is used
 
+## Notes
+
+- **HTML format is gated** — `Export-SPCReport -Format HTML` requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
+- CSV format is always available with no license requirement.
+- The output file path is returned in `SPC.ReportResult.FilePath` regardless of whether `-OutputPath` was specified, so you can pipe or capture it for further processing.
+
 ## Examples
 
 === "HTML report with summary"
 
     ```powershell
+    # Generate a self-contained HTML report for all sites, with a summary card
     Get-SPCOrphanedUser -AllSites |
         Export-SPCReport -Format HTML -IncludeSummary -OutputPath C:\reports\orphans.html
     ```
@@ -71,6 +78,7 @@ Export-SPCReport
 === "CSV grouped by risk level"
 
     ```powershell
+    # Export a free-tier CSV report, rows sorted by risk level
     Get-SPCOrphanedUser -SiteUrl $url |
         Export-SPCReport -Format CSV -GroupBy RiskLevel -OutputPath C:\reports\orphans.csv
     ```
@@ -78,11 +86,11 @@ Export-SPCReport
 === "JSON with pass-through"
 
     ```powershell
-    # Export to JSON and continue piping the objects
+    # Export to JSON and continue piping the original objects downstream
     $orphans = Get-SPCOrphanedUser -SiteUrl $url |
         Export-SPCReport -Format JSON -PassThru
 
-    # $orphans now contains the SPC.OrphanedUser objects for further processing
+    # $orphans still contains the SPC.OrphanedUser objects for further processing
     $orphans | Where-Object RiskLevel -eq 'HIGH'
     ```
 

@@ -41,11 +41,18 @@ Restore-SPCOrphanedUser
     - **Permanently deleted accounts cannot be restored.** If the user's Entra account was permanently deleted (after the 30-day soft-delete window), SharePoint cannot grant permissions to a non-existent identity. The restore will fail with an identity resolution error.
     - **Only direct role assignments are restored.** Permissions that came from group membership are not affected.
 
+## Notes
+
+- **This cmdlet is gated** — `Restore-SPCOrphanedUser` requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
+- The snapshot file must have been created by `Remove-SPCOrphanedUser -CreateSnapshot`. Manually edited or externally generated JSON files are not supported.
+- Use `-WhatIf` first to verify the snapshot content and confirm the target site is reachable before committing.
+
 ## Examples
 
 === "Preview restore"
 
     ```powershell
+    # Preview what permissions would be re-applied — no changes are made
     Restore-SPCOrphanedUser `
         -SnapshotPath C:\Snapshots\user@contoso.com_20260622T120000Z.json `
         -WhatIf
@@ -54,6 +61,7 @@ Restore-SPCOrphanedUser
 === "Restore"
 
     ```powershell
+    # Re-apply the permissions recorded in the snapshot file
     Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
     Restore-SPCOrphanedUser `
         -SnapshotPath C:\Snapshots\user@contoso.com_20260622T120000Z.json
@@ -63,3 +71,5 @@ Restore-SPCOrphanedUser
 ## See also
 
 - [Remove-SPCOrphanedUser](remove-spcorphaneduser.md)
+- [Get-SPCOrphanedUser](get-spcorphaneduser.md)
+- [Licensing](../licensing.md)

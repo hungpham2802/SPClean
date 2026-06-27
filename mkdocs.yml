@@ -61,6 +61,7 @@ nav:
     - Installation: getting-started/installation.md
     - Authentication: getting-started/authentication.md
     - Quick Start: getting-started/quickstart.md
+  - Comparison: comparison.md
   - Cmdlet Reference:
     - Overview: cmdlets/index.md
     - Connect-SPCTenant: cmdlets/connect-spctenant.md
