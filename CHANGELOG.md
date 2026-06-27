@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); version
 
 ---
 
+## [1.1.2] — 2026-06-27
+
+[PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.2) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.2)
+
+### Fixed
+- CI publish workflow: inject HMAC secret into `Private/LicenseManager.ps1` before packaging — published module now validates license keys correctly (previously shipped with placeholder, breaking `Register-SPCLicense`)
+- Interactive auth documentation: add `http://localhost` as required redirect URI for Mobile and desktop platform (missing entry caused AADSTS50011 on first-time app setup)
+
+---
+
 ## [1.1.1] — 2026-06-27
 
 [PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.1) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.1)

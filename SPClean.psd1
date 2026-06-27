@@ -1,6 +1,6 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '1.1.1'
+    ModuleVersion     = '1.1.2'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'Hung Pham'          # TODO: replace with your name
     CompanyName       = 'Community'       # TODO: replace or set to 'Community'
@@ -37,6 +37,10 @@
             ProjectUri   = 'https://github.com/hungpham2802/SPClean'
             LicenseUri   = 'https://github.com/hungpham2802/SPClean/blob/main/LICENSE'
             ReleaseNotes = @'
+## 1.1.2 — 2026-06-27
+- Fix: CI publish workflow now injects HMAC secret before packaging (license key validation works in published module)
+- Fix: Interactive auth docs — add http://localhost redirect URI requirement (AADSTS50011)
+
 ## 1.1.1 — 2026-06-27
 - Fix: exclude .git folder from PSGallery package
 

@@ -12,13 +12,18 @@ Requires an Entra app registration configured for delegated auth.
 
 1. Go to **Entra Admin Center → App registrations → New registration**
 2. **Authentication blade:**
-    - Add platform → Mobile and desktop applications
-    - Redirect URI: `https://login.microsoftonline.com/common/oauth2/nativeclient`
+    - Add platform → **Mobile and desktop applications**
+    - Add **both** redirect URIs:
+        - `http://localhost` ← required for browser-based interactive login (PnP opens a random localhost port)
+        - `https://login.microsoftonline.com/common/oauth2/nativeclient`
     - Enable **Allow public client flows = Yes**
 3. **API permissions** → Add **delegated** permissions:
     - Microsoft Graph: `User.Read.All`, `Directory.Read.All`
     - SharePoint: `AllSites.FullControl`
 4. **Grant admin consent**
+
+!!! warning "Missing `http://localhost` → AADSTS50011"
+    PnP PowerShell 3.x interactive auth opens a browser and redirects to `http://localhost:<random-port>`. If `http://localhost` is not listed under Mobile and desktop redirect URIs, Azure AD will reject with **AADSTS50011: redirect URI does not match**. Adding the port-less `http://localhost` covers all ports.
 
 ### Connect
 

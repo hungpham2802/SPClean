@@ -38,6 +38,15 @@ jobs:
           }
           exit 0
 
+      - name: Inject license secret
+        shell: pwsh
+        env:
+          SPCLEAN_SECRET_KEY: ${{ secrets.SPCLEAN_SECRET_KEY }}
+        run: |
+          .\tools\Inject-Secret.ps1 `
+              -SourceFile .\Private\LicenseManager.ps1 `
+              -OutputFile .\Private\LicenseManager.ps1
+
       - name: Remove .git folder before packaging
         shell: pwsh
         run: Remove-Item -Recurse -Force .git -ErrorAction SilentlyContinue
