@@ -1,27 +1,26 @@
 # SPClean
 
-> **PowerShell toolkit for SharePoint Online permission hygiene.**
+> **PowerShell toolkit for SharePoint Online permission hygiene.**  
 > Find orphaned users, score risk, generate reports, and remove safely — without enterprise-software pricing.
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE?style=flat&logo=powershell&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-SharePoint%20Online-0078D4?style=flat&logo=microsoft-sharepoint&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-28a745?style=flat)
-![Status](https://img.shields.io/badge/Status-Beta-ffc107?style=flat)
+![Version](https://img.shields.io/badge/Version-1.1.0-28a745?style=flat)
+![License](https://img.shields.io/badge/License-MIT-6f42c1?style=flat)
 
 ---
 
 ## Why SPClean
 
-Every SharePoint tenant accumulates **orphaned users** — accounts that remain in site permission lists long after the employee left, the contractor finished, or the guest expired. Microsoft has no built-in tool to find and clean them at scale.
+Every SharePoint tenant accumulates **orphaned users** — accounts that linger in site permission lists long after the employee left, the contractor finished, or the guest expired. Microsoft has no built-in tool to find and clean them at scale.
 
-The result: deleted accounts still holding active permissions, compliance reports that flag ghost identities, and hours of manual cleanup per tenant.
+The result: deleted accounts still holding active permissions, compliance reports flagging ghost identities, and hours of manual cleanup per tenant.
 
 SPClean fixes this in minutes:
 
 ```powershell
+# Scan all sites, get a colour-coded HTML report
 Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
-
-# Scan all sites, export a colour-coded HTML report
 Get-SPCOrphanedUser -AllSites | Export-SPCReport -Format HTML -IncludeSummary
 
 # Preview what would be removed — no changes made
@@ -33,6 +32,29 @@ Get-SPCOrphanedUser -AllSites |
     Remove-SPCOrphanedUser -CreateSnapshot -SnapshotPath C:\Snapshots
 ```
 
+<!-- TODO: Add demo GIF here once recorded -->
+<!-- ![SPClean demo](docs/assets/demo.gif) -->
+
+---
+
+## Licensing
+
+SPClean uses a **free + paid tier** model. Core scanning is always free.
+
+| Tier | Price | Features |
+| --- | --- | --- |
+| **Free** | $0 forever | Unlimited site scan · CSV export · WhatIf dry-run |
+| **Pro** | $79 / tenant / year | HTML report · Scheduled scan · Snapshot & restore |
+| **Consultant** | $149 / year | Unlimited tenants · Priority support |
+
+**→ [Purchase a license at hungpham2802.gumroad.com](https://hungpham2802.gumroad.com)**
+
+After purchasing, activate with one command:
+
+```powershell
+Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-...'
+```
+
 ---
 
 ## Contents
@@ -41,7 +63,6 @@ Get-SPCOrphanedUser -AllSites |
 - [Installation](#installation)
 - [Authentication setup](#authentication-setup)
 - [Quick start](#quick-start)
-- [Licensing](#licensing)
 - [Cmdlet reference](#cmdlet-reference)
 - [Permission requirements](#permission-requirements)
 - [Scheduling automated scans](#scheduling-automated-scans)
@@ -73,12 +94,20 @@ Install-Module Microsoft.Graph.Authentication -Scope CurrentUser -Force
 ## Installation
 
 ```powershell
-# Import directly from the project directory
-Import-Module .\SPClean\SPClean.psm1 -Force
+Install-Module -Name SPClean -Scope CurrentUser
+```
 
-# Or copy to your module path for auto-load
-Copy-Item .\SPClean -Destination "$HOME\Documents\PowerShell\Modules\SPClean" -Recurse
-Import-Module SPClean
+Or using PSResourceGet:
+
+```powershell
+Install-PSResource -Name SPClean
+```
+
+**Install from source:**
+
+```powershell
+git clone https://github.com/hungpham2802/SPClean.git
+Import-Module .\SPClean\SPClean.psm1 -Force
 ```
 
 Verify the import:
@@ -88,17 +117,6 @@ Get-Command -Module SPClean
 ```
 
 Expected output: `Connect-SPCTenant`, `Disconnect-SPCTenant`, `Get-SPCOrphanedUser`, `Export-SPCReport`, `Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`, `Register-SPCLicense`, `Get-SPCLicenseInfo`.
-
-**Install from PowerShell Gallery (recommended):**
-
-```powershell
-Install-PSResource -Name SPClean   # recommended (PSResourceGet)
-# or
-Install-Module -Name SPClean       # legacy PowerShellGet
-```
-
-[![PSGallery](https://img.shields.io/powershellgallery/v/SPClean?label=PSGallery&color=5391FE&logo=powershell&logoColor=white)](https://www.powershellgallery.com/packages/SPClean)
-[![PSGallery Downloads](https://img.shields.io/powershellgallery/dt/SPClean?label=Downloads&color=28a745)](https://www.powershellgallery.com/packages/SPClean)
 
 ---
 
@@ -187,7 +205,7 @@ Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
 # 2. Scan one site and view results
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
 
-# 3. Export to HTML report
+# 3. Export to HTML report  [Pro]
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Export-SPCReport -Format HTML -IncludeSummary
 
@@ -195,7 +213,7 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Remove-SPCOrphanedUser -WhatIf
 
-# 5. Remove HIGH-risk orphans with a snapshot backup
+# 5. Remove HIGH-risk orphans with a snapshot backup  [Pro]
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Where-Object RiskLevel -eq 'HIGH' |
     Remove-SPCOrphanedUser -CreateSnapshot -SnapshotPath C:\Snapshots -Confirm
@@ -203,77 +221,6 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
 # 6. Disconnect
 Disconnect-SPCTenant
 ```
-
----
-
-## Licensing
-
-SPClean uses a **key-based license** verified entirely offline — no internet check, no phone-home.
-
-### Tiers
-
-| Feature | Free | Pro | Consultant |
-| --- | :---: | :---: | :---: |
-| **Price** | $0 forever | **$79 / tenant / year** | **$149 / year** |
-| Orphan detection (`Get-SPCOrphanedUser`) | ✅ | ✅ | ✅ |
-| CSV and JSON reports | ✅ | ✅ | ✅ |
-| Unlimited sites per scan | ✅ | ✅ | ✅ |
-| HTML report with risk badges and sorting | — | ✅ | ✅ |
-| Snapshot backup before removal (`-CreateSnapshot`) | — | ✅ | ✅ |
-| Restore permissions from snapshot | — | ✅ | ✅ |
-| Scheduled automated scans | — | ✅ | ✅ |
-| **Unlimited tenants** | — | — | ✅ |
-| White-label HTML report (`-BrandingName`) | — | — | 🔜 v1.1 |
-| Priority support | — | — | ✅ |
-| Intended use | Personal / evaluation | Single-org admin | MSP / multi-tenant consultant |
-
-> **Free** lets you scan every site and export CSV/JSON reports without a key — enough to identify and audit orphans. **Pro** and **Consultant** unlock the full remediation and automation workflow.
-
-[→ Purchase on Gumroad](https://hungpham2802.gumroad.com)
-
-### Check your current license status
-
-```powershell
-Get-SPCLicenseInfo
-```
-
-```
-Status      : Unlicensed
-Tier        : FREE
-Email       :
-ExpiresAt   :
-```
-
-### Activate a license
-
-After purchasing from [Gumroad](https://hungpham2802.gumroad.com) you will receive a key in the format `SPCLEAN-PRO-…` by email.
-
-```powershell
-Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>'
-```
-
-The key is validated offline (HMAC-SHA256), written to `%APPDATA%\SPClean\license.lic`, and takes effect immediately — no restart required.
-
-```powershell
-# Verify activation
-Get-SPCLicenseInfo
-
-# Status      : Active
-# Tier        : PRO
-# Email       : you@contoso.com
-# ExpiresAt   : 2027-06-25 00:00:00
-```
-
-### What happens when a feature requires a license
-
-```
-Export-SPCReport: ERR-LIC-003: 'HTMLReport' requires a Pro or Consultant license.
-Current status: Unlicensed.
-→ Purchase at: https://hungpham2802.gumroad.com
-→ Register with: Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-...'
-```
-
-`-WhatIf` on write cmdlets always works without a license — preview is never gated.
 
 ---
 
@@ -285,12 +232,12 @@ Establishes a session to SharePoint Online and Microsoft Graph for all SPClean c
 
 ```
 Connect-SPCTenant
-    -TenantName          <string>               # Required. 'contoso', 'contoso.onmicrosoft.com', etc.
-    [-AuthMethod         Interactive|AppOnly]   # Default: Interactive
-    [-ClientId           <string>]              # Required for Interactive and AppOnly
-    [-CertificatePath    <string>]              # AppOnly: path to .pfx
-    [-CertificatePassword <SecureString>]       # AppOnly: .pfx password
-    [-ClientSecret       <SecureString>]        # AppOnly: client secret (alternative to certificate)
+    -TenantName           <string>               # Required. 'contoso', 'contoso.onmicrosoft.com', etc.
+    [-AuthMethod          Interactive|AppOnly]   # Default: Interactive
+    [-ClientId            <string>]              # Required for Interactive and AppOnly
+    [-CertificatePath     <string>]              # AppOnly: path to .pfx
+    [-CertificatePassword <SecureString>]        # AppOnly: .pfx password
+    [-ClientSecret        <SecureString>]        # AppOnly: client secret (alternative to certificate)
 ```
 
 Returns: `SPC.ConnectionInfo`
@@ -350,10 +297,6 @@ Returns: `SPC.OrphanedUser` objects with properties:
 # Single site
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
 
-# Multiple sites
-Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR',
-                              'https://contoso.sharepoint.com/sites/Finance'
-
 # All sites, exclude OneDrive
 Get-SPCOrphanedUser -AllSites -ExcludeSiteUrl '*-my.sharepoint.com/*'
 
@@ -363,9 +306,11 @@ Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled
 
 ---
 
-### `Export-SPCReport`
+### `Export-SPCReport` `[Pro]`
 
 Generates a CSV, HTML, or JSON report from orphaned user pipeline input.
+
+> CSV export is **free**. HTML and JSON reports require a **Pro or Consultant** license.
 
 ```
 Export-SPCReport
@@ -384,17 +329,13 @@ HTML reports include colour-coded risk badges — **HIGH** (red), **MEDIUM** (am
 **Examples:**
 
 ```powershell
-# HTML report with summary card
+# HTML report with summary card  [Pro]
 Get-SPCOrphanedUser -AllSites |
     Export-SPCReport -Format HTML -IncludeSummary -OutputPath C:\reports\orphans.html
 
-# CSV grouped by risk level
+# CSV grouped by risk level (free)
 Get-SPCOrphanedUser -SiteUrl $url |
     Export-SPCReport -Format CSV -GroupBy RiskLevel -OutputPath C:\reports\orphans.csv
-
-# JSON for downstream processing, pass objects through
-$orphans = Get-SPCOrphanedUser -SiteUrl $url |
-    Export-SPCReport -Format JSON -PassThru
 ```
 
 ---
@@ -403,14 +344,15 @@ $orphans = Get-SPCOrphanedUser -SiteUrl $url |
 
 Removes orphaned users from SharePoint UILs and revokes direct role assignments.
 
-> Does **not** delete accounts from Entra ID or remove users from SharePoint groups.
+> Does **not** delete accounts from Entra ID or remove users from SharePoint groups.  
+> `-CreateSnapshot` requires a **Pro or Consultant** license.
 
 ```
 Remove-SPCOrphanedUser
     -InputObject  <SPC.OrphanedUser[]>                              # Accepts pipeline.
     [-RiskLevel   HIGH|MEDIUM|LOW]                                  # Filter by risk level
     [-OrphanType  Deleted|SoftDeleted|Disabled|GuestOrphaned]       # Default: Deleted only
-    [-CreateSnapshot]                                               # Save JSON snapshot before removal
+    [-CreateSnapshot]                                               # Save JSON snapshot before removal  [Pro]
     [-SnapshotPath <string>]                                        # Snapshot directory
     [-Force]                                                        # Suppress -Confirm prompts
     [-WhatIf]                                                       # Preview only — no changes made
@@ -425,18 +367,14 @@ Returns: `SPC.RemovalResult`
 # Preview (no changes)
 Get-SPCOrphanedUser -SiteUrl $url | Remove-SPCOrphanedUser -WhatIf
 
-# Remove HIGH-risk deleted users with snapshot backup
+# Remove HIGH-risk deleted users with snapshot backup  [Pro]
 Get-SPCOrphanedUser -SiteUrl $url |
     Remove-SPCOrphanedUser -RiskLevel HIGH -CreateSnapshot -SnapshotPath C:\Snapshots
-
-# Remove all orphan types (use with care)
-Get-SPCOrphanedUser -SiteUrl $url -IncludeDisabled |
-    Remove-SPCOrphanedUser -OrphanType Deleted,SoftDeleted,Disabled -CreateSnapshot
 ```
 
 ---
 
-### `Restore-SPCOrphanedUser`
+### `Restore-SPCOrphanedUser` `[Pro]`
 
 Re-applies permissions from a JSON snapshot file created by `Remove-SPCOrphanedUser -CreateSnapshot`.
 
@@ -450,18 +388,14 @@ Restore-SPCOrphanedUser
 Returns: `SPC.RestoreResult`
 
 ```powershell
-# Preview restore
-Restore-SPCOrphanedUser -SnapshotPath C:\Snapshots\user@contoso.com_20260622T120000Z.json -WhatIf
-
-# Restore
 Restore-SPCOrphanedUser -SnapshotPath C:\Snapshots\user@contoso.com_20260622T120000Z.json
 ```
 
 ---
 
-### `New-SPCScanSchedule`
+### `New-SPCScanSchedule` `[Pro]`
 
-Generates a self-contained scan script and registers a Windows Scheduled Task. Always uses AppOnly authentication (interactive auth cannot run unattended).
+Generates a self-contained scan script and registers a Windows Scheduled Task. Always uses AppOnly authentication.
 
 ```
 New-SPCScanSchedule
@@ -469,8 +403,8 @@ New-SPCScanSchedule
     -ClientId            <string>
     -CertificatePath     <string>
     -CertificatePassword <SecureString>
-    [-Schedule           Daily|Weekly|Monthly]   # Mutually exclusive with -ScheduleAt
-    [-ScheduleAt         <datetime>]             # One-time execution
+    [-Schedule           Daily|Weekly|Monthly]
+    [-ScheduleAt         <datetime>]
     [-ReportFormat       HTML|CSV|JSON]          # Default: HTML
     [-ReportOutputPath   <string>]
     [-TaskName           <string>]               # Default: SPClean_OrphanedUserScan
@@ -493,64 +427,27 @@ New-SPCScanSchedule -TenantName contoso `
 
 ### `Register-SPCLicense`
 
-Validates and activates a license key. Writes `%APPDATA%\SPClean\license.lic` and clears the module cache so the new tier takes effect in the current session.
+Activates a purchased license key on the current machine.
 
 ```
 Register-SPCLicense
-    -LicenseKey <string>   # Required. 'SPCLEAN-PRO-…' or 'SPCLEAN-CONSULTANT-…'
-    [-Force]               # Overwrite existing license.lic without prompting
-    [-WhatIf]
-    [-Confirm]
+    -LicenseKey <string>   # The key from your Gumroad purchase email
+    [-Force]               # Overwrite existing license without prompting
 ```
-
-Returns: `SPC.LicenseInfo`
 
 ```powershell
-# Activate
-Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>'
-
-# Preview (validate key without writing the file)
-Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>' -WhatIf
+Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-...'
 ```
-
-**Error codes:**
-
-| Code | Meaning |
-| --- | --- |
-| `ERR-LIC-001` | Key format is invalid or signature does not match |
-| `ERR-LIC-002` | Key has expired |
-| `ERR-LIC-003` | Feature requires a Pro or Consultant license |
-| `ERR-LIC-004` | Feature requires a Consultant license |
 
 ---
 
 ### `Get-SPCLicenseInfo`
 
-Returns the current license status from the module cache or disk. Never throws — safe to call at any time.
-
-```
-Get-SPCLicenseInfo
-```
-
-Returns: `SPC.LicenseInfo`
-
-| Property | Description |
-| --- | --- |
-| `Status` | `Active`, `Expired`, `Invalid`, or `Unlicensed` |
-| `Tier` | `FREE`, `PRO`, or `CONSULTANT` |
-| `Email` | Email address the license was issued to |
-| `ExpiresAt` | License expiry date (UTC) |
-| `RegisteredAt` | Date the license was registered on this machine |
-| `LicenseId` | Unique license identifier |
+Returns the currently registered license status.
 
 ```powershell
-# Check status
 Get-SPCLicenseInfo
-
-# Conditional logic
-if ((Get-SPCLicenseInfo).Status -ne 'Active') {
-    Write-Warning 'HTML reports and scheduled scans require a Pro license.'
-}
+# Tier: PRO | Status: Active | Expires: 2027-06-25 | Email: user@contoso.com
 ```
 
 ---
@@ -581,12 +478,10 @@ All permissions require **admin consent**.
 ## Scheduling automated scans
 
 ```powershell
-# 1. Connect once to verify credentials
 $certPwd = Read-Host -AsSecureString 'Certificate password'
 Connect-SPCTenant -TenantName contoso -AuthMethod AppOnly `
     -ClientId '<app-id>' -CertificatePath C:\certs\spclean.pfx -CertificatePassword $certPwd
 
-# 2. Register the scheduled task (weekly, HTML report)
 New-SPCScanSchedule -TenantName contoso `
     -ClientId        '<app-id>' `
     -CertificatePath C:\certs\spclean.pfx `
@@ -635,16 +530,12 @@ Pass just the short name: `contoso`, not a full URL.
 Ensure all three parameters are supplied for AppOnly auth.
 
 ### `ERR-AUTH-004: Interactive auth requires -ClientId in PnP.PowerShell 3.x`
-PnP.PowerShell 3.x removed the implicit default app. Provide `-ClientId` with your Entra app's client ID. See [Authentication setup](#authentication-setup).
+PnP.PowerShell 3.x removed the implicit default app. Provide `-ClientId` with your Entra app's client ID.
 
-### `WARNING: Please specify a valid client id for an Entra ID App Registration`
-Same root cause as ERR-AUTH-004. Provide `-ClientId`.
-
-### `AADSTS900023: tenant identifier must be a valid DNS name`
-Pass `contoso` or `contoso.onmicrosoft.com`. Do not pass a bare subdomain without a dot.
+### `ERR-LIC-003: Feature requires a Pro or Consultant license`
+Run `Get-SPCLicenseInfo` to check current status. If unlicensed, purchase at [hungpham2802.gumroad.com](https://hungpham2802.gumroad.com) then run `Register-SPCLicense`.
 
 ### `Get-SPCOrphanedUser` returns 0 results on a site you expect to have orphans
-- The site may have been cleaned by a previous `Remove-SPCOrphanedUser` run.
 - Run with `-Verbose` to trace UIL reads and Graph API calls.
 - Confirm the connection has `Sites.FullControl.All` (not read-only).
 
@@ -659,6 +550,7 @@ The HTML is self-contained with inline CSS and JavaScript. Open in a modern brow
 - **All write cmdlets** (`Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`) support `-WhatIf` and `-Confirm`.
 - **No data leaves to third-party servers.** SPClean connects only to `graph.microsoft.com` and your tenant's SharePoint and Entra endpoints.
 - **Snapshots are stored locally.** Snapshot files contain user identity and permission names — treat the snapshot directory as sensitive and apply appropriate NTFS ACLs.
+- **License keys** are verified offline via HMAC-SHA256. No activation server is involved.
 
 ---
 
