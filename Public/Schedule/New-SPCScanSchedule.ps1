@@ -160,12 +160,9 @@ try {
         [System.IO.File]::WriteAllText($scriptPath, $scriptContent, [System.Text.UTF8Encoding]::new($false))
         Write-Verbose "New-SPCScanSchedule: Scan script written to '$scriptPath'"
 
-        # Detect Windows — PS 5.1 is Windows-only; PS 6+ exposes $IsWindows
-        $isWindows = $PSVersionTable.PSVersion.Major -le 5
-        if (-not $isWindows) {
-            $winVar    = Get-Variable -Name IsWindows -ErrorAction SilentlyContinue
-            $isWindows = ($null -ne $winVar -and $winVar.Value -eq $true)
-        }
+        # Detect Windows via .NET — reliable across PS 5.1, PS 7+, and module scopes.
+        # Get-Variable/automatic-variable lookup is not trustworthy inside module functions.
+        $isWindows = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
 
         $taskRegistered = $false
         $nextRun        = $null
