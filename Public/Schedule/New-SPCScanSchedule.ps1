@@ -59,6 +59,7 @@ function New-SPCScanSchedule {
         [string] $ReportFormat = 'HTML',
 
         [Parameter(Mandatory)]
+        [Alias('OutputPath')]
         [string] $ReportOutputPath,
 
         [Parameter()]

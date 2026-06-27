@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); version
 
 ---
 
+## [1.1.4] — 2026-06-27
+
+[PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.4) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.4)
+
+### Fixed
+- `New-SPCScanSchedule`: added `[Alias('OutputPath')]` to `-ReportOutputPath` parameter — calling with `-OutputPath` now works without a `ParameterNotFound` error.
+
+### Docs
+- `Restore-SPCOrphanedUser`: added limitation note — soft-deleted accounts must be restored in Entra ID (`Restore-MgDirectoryDeletedItem`) before running restore, not just permanently deleted ones.
+
+---
+
 ## [1.1.3] — 2026-06-27
 
 [PowerShell Gallery](https://www.powershellgallery.com/packages/SPClean/1.1.3) · [GitHub](https://github.com/hungpham2802/SPClean/releases/tag/v1.1.3)

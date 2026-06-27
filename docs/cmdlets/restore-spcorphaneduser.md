@@ -38,6 +38,7 @@ Restore-SPCOrphanedUser
 
 !!! warning "What restore does NOT do"
     - **Group memberships are not re-applied.** SharePoint group memberships are recorded in the snapshot for reference but are not automatically restored. They must be re-added manually.
+    - **Soft-deleted accounts must be restored in Entra first.** If the user was deleted from Entra ID but is still within the 30-day soft-delete window, restore the account in Entra (`Restore-MgDirectoryDeletedItem`) before running this cmdlet — SharePoint cannot grant permissions to a deleted identity even if it still exists in the recycle bin.
     - **Permanently deleted accounts cannot be restored.** If the user's Entra account was permanently deleted (after the 30-day soft-delete window), SharePoint cannot grant permissions to a non-existent identity. The restore will fail with an identity resolution error.
     - **Only direct role assignments are restored.** Permissions that came from group membership are not affected.
 
