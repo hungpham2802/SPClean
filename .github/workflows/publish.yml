@@ -29,6 +29,7 @@ jobs:
         run: |
           $config = New-PesterConfiguration
           $config.Run.Path         = './Tests/Unit'   # Unit only — integration tests need live tenant env vars
+          $config.Run.PassThru     = $true
           $config.Output.Verbosity = 'Minimal'
           $result = Invoke-Pester -Configuration $config
           if ($result.PassedCount -lt 120) {

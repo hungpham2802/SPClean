@@ -52,6 +52,7 @@ jobs:
         run: |
           $config = New-PesterConfiguration
           $config.Run.Path             = './Tests/Unit'
+          $config.Run.PassThru         = $true
           $config.Output.Verbosity     = 'Normal'
           $config.TestResult.Enabled   = $true
           $config.TestResult.OutputPath = 'TestResults.xml'
