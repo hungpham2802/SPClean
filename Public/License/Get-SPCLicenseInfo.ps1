@@ -4,12 +4,13 @@ function Get-SPCLicenseInfo {
         Returns the currently registered SPClean license status.
     .DESCRIPTION
         Reads license status from the module cache or disk. Never throws —
-        returns a status object whether licensed or not. Use this to check
-        license tier before calling paid features.
+        returns a status object whether licensed or not. Re-verifies against
+        Gumroad API after 7 days; falls back to cached status when offline.
+        Use this to check license tier before calling paid features.
     .EXAMPLE
         Get-SPCLicenseInfo
 
-        Returns the current license status. Status will be 'Active', 'Expired',
+        Returns the current license status. Status will be 'Active', 'Revoked',
         'Invalid', or 'Unlicensed'.
     .EXAMPLE
         if ((Get-SPCLicenseInfo).Status -ne 'Active') {
@@ -18,92 +19,66 @@ function Get-SPCLicenseInfo {
     .OUTPUTS
         SPC.LicenseInfo
     .NOTES
-        Purchase SPClean Pro or Consultant at https://spclean.gumroad.com
+        Purchase SPClean Pro or Consultant at https://hungpham2802.gumroad.com
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param()
 
     $makeInfo = {
-        param([string]$Status, [string]$Tier, [string]$Email, [string]$LicId,
-              $ExpiresAt, $RegisteredAt, [string]$FailureReason)
+        param([string]$Status, [string]$Tier, [string]$Email,
+              $RegisteredAt, $LastVerifiedAt, [bool]$IsTesting)
         $r = [PSCustomObject][ordered]@{
-            Tier          = $Tier
-            Email         = $Email
-            LicenseId     = $LicId
-            ExpiresAt     = $ExpiresAt
-            RegisteredAt  = $RegisteredAt
-            Status        = $Status
-            FailureReason = $FailureReason
+            Tier           = $Tier
+            Email          = $Email
+            RegisteredAt   = $RegisteredAt
+            LastVerifiedAt = $LastVerifiedAt
+            Status         = $Status
+            IsTesting      = $IsTesting
         }
         $r.PSObject.TypeNames.Insert(0, 'SPC.LicenseInfo')
         $r
     }
 
-    $unlicensed = { & $makeInfo 'Unlicensed' 'FREE' $null $null $null $null $null }
-
-    # Step 1: return from cache if valid and not expired
+    # Step 1: return from memory cache if LastVerifiedAt < 7 days
     if ($null -ne $script:SPCLicenseCache) {
         $cached = $script:SPCLicenseCache
-        if ($cached.Status -eq 'Active' -and $null -ne $cached.ExpiresAt -and
-            $cached.ExpiresAt -gt [datetime]::UtcNow) {
-            return $cached
+        if ($null -ne $cached.LastVerifiedAt) {
+            $cacheAgeDays = ([datetime]::UtcNow - $cached.LastVerifiedAt).TotalDays
+            if ($cacheAgeDays -lt $script:LicenseCacheMaxAgeDays) {
+                return $cached
+            }
         }
         $script:SPCLicenseCache = $null
     }
 
-    # Step 2: read from disk
-    $licPath = Get-SPCLicensePathInternal
-    if (-not (Test-Path -Path $licPath -PathType Leaf)) {
-        return (& $unlicensed)
+    # Step 2: read from disk (Get-SPCLicenseDataInternal handles 7-day re-verify)
+    $diskResult = Get-SPCLicenseDataInternal
+
+    if ($diskResult.Status -ne 'Active') {
+        return (& $makeInfo $diskResult.Status $null $null $null $null $false)
     }
 
-    $licRaw = $null
+    # Step 3: parse timestamps and build result
+    $data = $diskResult.LicData
+    $registeredAt   = $null
+    $lastVerifiedAt = $null
     try {
-        $licRaw = Get-Content -Path $licPath -Encoding UTF8 -Raw -ErrorAction Stop
-        $lic    = $licRaw | ConvertFrom-Json
-    } catch {
-        Write-Verbose "Get-SPCLicenseInfo: Cannot read license.lic — $($_.Exception.Message)"
-        return (& $makeInfo 'Invalid' $null $null $null $null $null 'CorruptFile')
-    }
-
-    if ([string]::IsNullOrWhiteSpace($lic.licenseKey)) {
-        return (& $makeInfo 'Invalid' $null $null $null $null $null 'MissingLicenseKey')
-    }
-
-    # Step 3: re-verify key
-    $secretBytes = $null
-    $validation  = $null
-    try {
-        $secretBytes = Get-SPCSecretKeyBytesInternal
-        $validation  = Test-SPCLicenseKey -LicenseKey $lic.licenseKey -SecretKeyBytes $secretBytes
-    } catch {
-        Write-Verbose "Get-SPCLicenseInfo: Verification error — $($_.Exception.Message)"
-        return (& $makeInfo 'Invalid' $null $null $null $null $null 'VerificationError')
-    } finally {
-        if ($null -ne $secretBytes) {
-            [System.Array]::Clear($secretBytes, 0, $secretBytes.Length)
-        }
-    }
-
-    if (-not $validation.IsValid) {
-        $status = if ($validation.FailureReason -eq 'Expired') { 'Expired' } else { 'Invalid' }
-        return (& $makeInfo $status $null $null $null $null $null $validation.FailureReason)
-    }
-
-    $registeredAt = $null
-    try {
-        if (-not [string]::IsNullOrWhiteSpace($lic.registeredAt)) {
+        if (-not [string]::IsNullOrWhiteSpace($data.registeredAt)) {
             $registeredAt = [datetime]::Parse(
-                $lic.registeredAt,
+                $data.registeredAt,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::RoundtripKind)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($data.lastVerifiedAt)) {
+            $lastVerifiedAt = [datetime]::Parse(
+                $data.lastVerifiedAt,
                 [System.Globalization.CultureInfo]::InvariantCulture,
                 [System.Globalization.DateTimeStyles]::RoundtripKind)
         }
     } catch {}
 
-    # Step 5: populate cache and return
-    $result = & $makeInfo 'Active' $validation.Tier $validation.Email $validation.LicenseId `
-        $validation.ExpiresAt $registeredAt $null
+    $result = & $makeInfo 'Active' $data.tier $data.email $registeredAt $lastVerifiedAt ($data.isTesting -eq $true)
 
     $script:SPCLicenseCache = $result
     $result

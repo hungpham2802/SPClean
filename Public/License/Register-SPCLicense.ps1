@@ -3,17 +3,19 @@ function Register-SPCLicense {
     .SYNOPSIS
         Registers an SPClean license key on the current machine.
     .DESCRIPTION
-        Validates the provided license key, writes a license.lic file to
-        $env:APPDATA\SPClean\, and activates paid features (HTML report,
-        scheduled scan, permission snapshots, restore). Run once after purchasing.
+        Validates the provided UUID license key via the Gumroad API, writes a
+        license.lic file, and activates paid features (HTML report, scheduled scan,
+        permission snapshots, restore). Requires internet access on first run.
+        Obtain your key from your Gumroad purchase email after buying at
+        https://hungpham2802.gumroad.com.
     .PARAMETER LicenseKey
-        The full license key string: SPCLEAN-PRO-... or SPCLEAN-CONSULTANT-...
-        Obtain from your Gumroad purchase receipt.
+        The UUID license key from your Gumroad purchase email.
+        Format: XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX
     .PARAMETER Force
         Overwrite an existing license.lic without prompting. Use in unattended
         or CI/CD scenarios.
     .EXAMPLE
-        Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-eyJ...'
+        Register-SPCLicense -LicenseKey '6F0E4C97-B72A4E69-A11BF6C4-AF6517E7'
 
         Validates and registers the key, prompting for confirmation if a license
         is already present.
@@ -24,8 +26,9 @@ function Register-SPCLicense {
     .OUTPUTS
         SPC.LicenseInfo
     .NOTES
-        Purchase SPClean Pro or Consultant at https://spclean.gumroad.com
-        The license.lic file is stored per-user and is not transferable between machines.
+        Purchase SPClean Pro or Consultant at https://hungpham2802.gumroad.com
+        The license.lic file is stored per-user in $env:APPDATA\SPClean\ (Windows)
+        or $HOME/.config/SPClean/ (Linux/macOS).
     #>
     [CmdletBinding(SupportsShouldProcess)]
     [OutputType([PSCustomObject])]
@@ -37,32 +40,24 @@ function Register-SPCLicense {
         [switch] $Force
     )
 
-    begin {
-        $trimmedKey = $LicenseKey.Trim()
-        $keyPreview = if ($trimmedKey.Length -ge 20) { $trimmedKey.Substring(0, 20) + '...' } else { '(short key)' }
-    }
-
     process {
-        $secretBytes = $null
-        try {
-            $secretBytes = Get-SPCSecretKeyBytesInternal
-            $validation  = Test-SPCLicenseKey -LicenseKey $trimmedKey -SecretKeyBytes $secretBytes
-        } finally {
-            if ($null -ne $secretBytes) {
-                [System.Array]::Clear($secretBytes, 0, $secretBytes.Length)
+        $trimmedKey = $LicenseKey.Trim()
+
+        $result = Test-SPCLicenseKeyInternal -LicenseKey $trimmedKey
+
+        if (-not $result.IsValid) {
+            if ($result.FailureReason -eq 'NetworkError') {
+                throw "ERR-LIC-NET-001: Cannot reach Gumroad API to verify license. Check internet connection and try again."
             }
+            throw "ERR-LIC-001: Invalid license key: $($result.FailureReason). Verify the key from your Gumroad purchase email."
         }
 
-        if (-not $validation.IsValid) {
-            throw "ERR-LIC-001: Invalid license key ($keyPreview): $($validation.FailureReason). Verify the key and try again."
-        }
-
-        $licPath = Get-SPCLicensePathInternal
+        $licPath = $script:LicenseFilePath
         $licDir  = Split-Path $licPath -Parent
 
         if ((Test-Path -Path $licPath -PathType Leaf) -and -not $Force) {
             $overwrite = $PSCmdlet.ShouldContinue(
-                'A license is already registered. Overwrite?',
+                'Overwrite existing license?',
                 'Register-SPCLicense'
             )
             if (-not $overwrite) {
@@ -75,42 +70,45 @@ function Register-SPCLicense {
             try {
                 [void](New-Item -Path $licDir -ItemType Directory -Force -ErrorAction Stop)
             } catch {
-                throw "ERR-LIC-002: Cannot create license directory '$licDir': $($_.Exception.Message)"
+                throw "ERR-LIC-002: Cannot create license directory '${licDir}': $($_.Exception.Message)"
             }
         }
 
-        $registeredAt = [datetime]::UtcNow
-        $licContent   = [ordered]@{
-            licenseKey   = $trimmedKey
-            tier         = $validation.Tier
-            email        = $validation.Email
-            licenseId    = $validation.LicenseId
-            expiresAt    = $validation.ExpiresAt.ToString('o')
-            issuedAt     = $validation.IssuedAt.ToString('o')
-            registeredAt = $registeredAt.ToString('o')
+        $now = [datetime]::UtcNow
+        $licContent = [ordered]@{
+            licenseKey     = $trimmedKey
+            tier           = $result.Tier
+            email          = $result.Email
+            isTesting      = $result.IsTesting
+            registeredAt   = $now.ToString('o')
+            lastVerifiedAt = $now.ToString('o')
         }
 
         try {
             $json = $licContent | ConvertTo-Json -Compress
             [System.IO.File]::WriteAllText($licPath, $json, [System.Text.UTF8Encoding]::new($false))
         } catch {
-            throw "ERR-LIC-002: Cannot write license file to '$licPath': $($_.Exception.Message)"
+            throw "ERR-LIC-002: Cannot write license file to '${licPath}': $($_.Exception.Message)"
         }
 
         $script:SPCLicenseCache = $null
 
-        $result = [PSCustomObject][ordered]@{
-            Tier         = $validation.Tier
-            Email        = $validation.Email
-            LicenseId    = $validation.LicenseId
-            ExpiresAt    = $validation.ExpiresAt
-            RegisteredAt = $registeredAt
-            Status       = 'Active'
+        if ($result.IsTesting) {
+            Write-Warning "Test purchase detected. This key is for testing only — do not use in production."
         }
-        $result.PSObject.TypeNames.Insert(0, 'SPC.LicenseInfo')
 
-        Write-Information "SPClean $($validation.Tier) license registered successfully. Valid until $($validation.ExpiresAt.ToString('yyyy-MM-dd'))." -InformationAction Continue
+        $output = [PSCustomObject][ordered]@{
+            Tier           = $result.Tier
+            Email          = $result.Email
+            RegisteredAt   = $now
+            LastVerifiedAt = $now
+            Status         = 'Active'
+            IsTesting      = $result.IsTesting
+        }
+        $output.PSObject.TypeNames.Insert(0, 'SPC.LicenseInfo')
 
-        $result
+        Write-Information "SPClean $($result.Tier) license registered. No expiry — renews automatically with Gumroad subscription." -InformationAction Continue
+
+        $output
     }
 }
