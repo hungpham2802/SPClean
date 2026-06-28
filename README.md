@@ -35,7 +35,7 @@ Get-SPCOrphanedUser -AllSites |
     Remove-SPCOrphanedUser -CreateSnapshot -SnapshotPath C:\Snapshots
 ```
 
-<video src="docs/assets/demo.mp4" autoplay loop muted playsinline width="800"></video>
+![SPClean demo](docs/assets/demo.gif)
 
 ---
 
