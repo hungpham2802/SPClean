@@ -5,8 +5,11 @@
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE?style=flat&logo=powershell&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-SharePoint%20Online-0078D4?style=flat&logo=microsoft-sharepoint&logoColor=white)
-![Version](https://img.shields.io/badge/Version-1.1.0-28a745?style=flat)
+![PSGallery Version](https://img.shields.io/powershellgallery/v/SPClean?label=PSGallery&color=28a745&style=flat)
+![PSGallery Downloads](https://img.shields.io/powershellgallery/dt/SPClean?color=blue&style=flat)
 ![License](https://img.shields.io/badge/License-MIT-6f42c1?style=flat)
+
+📖 **[Documentation](https://hungpham2802.github.io/spclean)** · 🛒 **[Get a license](https://hungpham2802.gumroad.com)**
 
 ---
 
@@ -32,8 +35,7 @@ Get-SPCOrphanedUser -AllSites |
     Remove-SPCOrphanedUser -CreateSnapshot -SnapshotPath C:\Snapshots
 ```
 
-<!-- TODO: Add demo GIF here once recorded -->
-<!-- ![SPClean demo](docs/assets/demo.gif) -->
+<video src="docs/assets/demo.mp4" autoplay loop muted playsinline width="800"></video>
 
 ---
 
@@ -310,7 +312,7 @@ Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled
 
 Generates a CSV, HTML, or JSON report from orphaned user pipeline input.
 
-> CSV export is **free**. HTML and JSON reports require a **Pro or Consultant** license.
+> CSV and JSON export are **free**. HTML reports require a **Pro or Consultant** license.
 
 ```
 Export-SPCReport
@@ -553,6 +555,20 @@ The HTML is self-contained with inline CSS and JavaScript. Open in a modern brow
 - **License keys** are verified offline via HMAC-SHA256. No activation server is involved.
 
 ---
+
+## Roadmap
+
+| Module | Status | Description |
+| --- | --- | --- |
+| **Module 1** — Orphaned User Detection | ✅ Available | Find, report, and remove orphaned users across all site collections |
+| **Module 2** — Permissions Cleanup | 🔜 Planned | Over-shared content, broken inheritance, external user audit |
+| **Module 3** — Site Lifecycle | 🔜 Planned | Inactive site detection, storage cleanup, archival |
+
+## Contributing
+
+Found a bug or have a feature request? [Open an issue](https://github.com/hungpham2802/SPClean/issues) — all feedback welcome.
+
+If you want to contribute code, please open an issue first to discuss the change.
 
 ## Changelog
 
