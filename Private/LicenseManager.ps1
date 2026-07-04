@@ -183,12 +183,12 @@ function Assert-SPCProLicense {
     param([Parameter(Mandatory)] [string]$Feature)
     $info = Get-SPCLicenseInfo
     if ($info.Status -eq 'Active' -and $info.Tier -in @('PRO', 'CONSULTANT')) { return }
-    throw "ERR-LIC-003: '$Feature' requires a Pro or Consultant license. → Purchase: https://hungpham2802.gumroad.com"
+    throw "ERR-LIC-003: '$Feature' requires a Pro or Consultant license. → Purchase Pro: https://ngochung47.gumroad.com/l/spclean-pro or Consultant: https://ngochung47.gumroad.com/l/spclean-consultant"
 }
 
 function Assert-SPCConsultantLicense {
     param([Parameter(Mandatory)] [string]$Feature)
     $info = Get-SPCLicenseInfo
     if ($info.Status -eq 'Active' -and $info.Tier -eq 'CONSULTANT') { return }
-    throw "ERR-LIC-004: '$Feature' requires a Consultant license. → Upgrade: https://hungpham2802.gumroad.com"
+    throw "ERR-LIC-004: '$Feature' requires a Consultant license. → Upgrade: https://ngochung47.gumroad.com/l/spclean-consultant"
 }

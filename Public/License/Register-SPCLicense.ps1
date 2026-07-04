@@ -7,7 +7,7 @@ function Register-SPCLicense {
         license.lic file, and activates paid features (HTML report, scheduled scan,
         permission snapshots, restore). Requires internet access on first run.
         Obtain your key from your Gumroad purchase email after buying at
-        https://hungpham2802.gumroad.com.
+        https://ngochung47.gumroad.com/.
     .PARAMETER LicenseKey
         The UUID license key from your Gumroad purchase email.
         Format: XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX
@@ -26,7 +26,7 @@ function Register-SPCLicense {
     .OUTPUTS
         SPC.LicenseInfo
     .NOTES
-        Purchase SPClean Pro or Consultant at https://hungpham2802.gumroad.com
+        Purchase SPClean Pro at https://ngochung47.gumroad.com/l/spclean-pro or Consultant at https://ngochung47.gumroad.com/l/spclean-consultant
         The license.lic file is stored per-user in $env:APPDATA\SPClean\ (Windows)
         or $HOME/.config/SPClean/ (Linux/macOS).
     #>

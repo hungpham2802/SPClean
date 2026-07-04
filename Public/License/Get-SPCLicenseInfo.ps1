@@ -19,7 +19,7 @@ function Get-SPCLicenseInfo {
     .OUTPUTS
         SPC.LicenseInfo
     .NOTES
-        Purchase SPClean Pro or Consultant at https://hungpham2802.gumroad.com
+        Purchase SPClean Pro at https://ngochung47.gumroad.com/l/spclean-pro or Consultant at https://ngochung47.gumroad.com/l/spclean-consultant
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]

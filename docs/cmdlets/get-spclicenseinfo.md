@@ -58,7 +58,7 @@ None.
     ```powershell
     if ((Get-SPCLicenseInfo).Status -ne 'Active') {
         Write-Warning 'HTML reports and scheduled scans require a Pro license.'
-        Write-Warning 'Purchase at: https://hungpham2802.gumroad.com'
+        Write-Warning 'Purchase at: https://ngochung47.gumroad.com/'
     }
     ```
 

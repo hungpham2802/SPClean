@@ -22,7 +22,7 @@ SPClean uses a **key-based license** verified entirely offline — no internet c
 !!! info "Free tier"
     **Free** lets you scan every site and export CSV/JSON reports without a key — enough to identify and audit orphans. **Pro** and **Consultant** unlock the full remediation and automation workflow.
 
-[→ Purchase on Gumroad](https://hungpham2802.gumroad.com){ .md-button .md-button--primary }
+[→ Purchase on Gumroad](https://ngochung47.gumroad.com/){ .md-button .md-button--primary }
 
 ---
 
@@ -45,13 +45,13 @@ ExpiresAt   :
 
 ## Activate a license
 
-After purchasing from [Gumroad](https://hungpham2802.gumroad.com) you will receive a key in the format `SPCLEAN-PRO-…` by email.
+After purchasing from [Gumroad](https://ngochung47.gumroad.com/) you will receive a license key in standard UUID format by email.
 
 ```powershell
-Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-<payload>-<sig>'
+Register-SPCLicense -LicenseKey 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'
 ```
 
-The key is validated offline (HMAC-SHA256), written to `%APPDATA%\SPClean\license.lic`, and takes effect immediately — no restart required.
+The key is validated online against the Gumroad API, written to `%APPDATA%\SPClean\license.lic`, and takes effect immediately — no restart required. The status is cached locally for 7 days to support offline use before requiring a background re-verification.
 
 Verify activation:
 
@@ -63,7 +63,6 @@ Get-SPCLicenseInfo
 Status      : Active
 Tier        : PRO
 Email       : you@contoso.com
-ExpiresAt   : 2027-06-25 00:00:00
 ```
 
 ---
@@ -73,7 +72,7 @@ ExpiresAt   : 2027-06-25 00:00:00
 ```
 Export-SPCReport: ERR-LIC-003: 'HTMLReport' requires a Pro or Consultant license.
 Current status: Unlicensed.
-→ Purchase at: https://hungpham2802.gumroad.com
+→ Purchase at: https://ngochung47.gumroad.com/
 → Register with: Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-...'
 ```
 
@@ -86,8 +85,8 @@ Current status: Unlicensed.
 
 | Code | Meaning |
 | --- | --- |
-| `ERR-LIC-001` | Key format is invalid or signature does not match |
-| `ERR-LIC-002` | Key has expired |
+| `ERR-LIC-001` | Key format is invalid or cannot reach the API |
+| `ERR-LIC-002` | Cannot write license file to disk |
 | `ERR-LIC-003` | Feature requires a Pro or Consultant license |
 | `ERR-LIC-004` | Feature requires a Consultant license |
 

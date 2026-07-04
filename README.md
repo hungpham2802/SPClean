@@ -9,7 +9,7 @@
 ![PSGallery Downloads](https://img.shields.io/powershellgallery/dt/SPClean?color=blue&style=flat)
 ![License](https://img.shields.io/badge/License-MIT-6f42c1?style=flat)
 
-📖 **[Documentation](https://hungpham2802.github.io/spclean)** · 🛒 **[Get a license](https://hungpham2802.gumroad.com)**
+📖 **[Documentation](https://hungpham2802.github.io/spclean)** · 🛒 **[Get a license](https://ngochung47.gumroad.com/)**
 
 ---
 
@@ -49,12 +49,12 @@ SPClean uses a **free + paid tier** model. Core scanning is always free.
 | **Pro** | $79 / tenant / year | HTML report · Scheduled scan · Snapshot & restore |
 | **Consultant** | $149 / year | Unlimited tenants · Priority support |
 
-**→ [Purchase a license at hungpham2802.gumroad.com](https://hungpham2802.gumroad.com)**
+**→ [Purchase a license at ngochung47.gumroad.com](https://ngochung47.gumroad.com/)**
 
 After purchasing, activate with one command:
 
 ```powershell
-Register-SPCLicense -LicenseKey 'SPCLEAN-PRO-...'
+Register-SPCLicense -LicenseKey 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'
 ```
 
 ---
@@ -535,7 +535,7 @@ Ensure all three parameters are supplied for AppOnly auth.
 PnP.PowerShell 3.x removed the implicit default app. Provide `-ClientId` with your Entra app's client ID.
 
 ### `ERR-LIC-003: Feature requires a Pro or Consultant license`
-Run `Get-SPCLicenseInfo` to check current status. If unlicensed, purchase at [hungpham2802.gumroad.com](https://hungpham2802.gumroad.com) then run `Register-SPCLicense`.
+Run `Get-SPCLicenseInfo` to check current status. If unlicensed, purchase at [ngochung47.gumroad.com](https://ngochung47.gumroad.com/) then run `Register-SPCLicense`.
 
 ### `Get-SPCOrphanedUser` returns 0 results on a site you expect to have orphans
 - Run with `-Verbose` to trace UIL reads and Graph API calls.
@@ -552,7 +552,7 @@ The HTML is self-contained with inline CSS and JavaScript. Open in a modern brow
 - **All write cmdlets** (`Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`) support `-WhatIf` and `-Confirm`.
 - **No data leaves to third-party servers.** SPClean connects only to `graph.microsoft.com` and your tenant's SharePoint and Entra endpoints.
 - **Snapshots are stored locally.** Snapshot files contain user identity and permission names — treat the snapshot directory as sensitive and apply appropriate NTFS ACLs.
-- **License keys** are verified offline via HMAC-SHA256. No activation server is involved.
+- **License keys** are verified online against the Gumroad API and securely cached locally for 7 days to support offline use.
 
 ---
 
