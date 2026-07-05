@@ -115,9 +115,8 @@ function Restore-SPCOrphanedUser {
             $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
             switch ($Ctx.AuthMethod) {
                 'Interactive' {
-                    $pnpArgs = @{ Url = $Url; Interactive = $true; ReturnConnection = $true }
-                    if (-not [string]::IsNullOrEmpty($Ctx._ClientId)) { $pnpArgs['ClientId'] = $Ctx._ClientId }
-                    Connect-PnPOnline @pnpArgs
+                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
+                    Connect-PnPOnline -Url $Url -AccessToken $token -ReturnConnection
                 }
                 'AppOnly' {
                     if ($Ctx._CertificatePath) {

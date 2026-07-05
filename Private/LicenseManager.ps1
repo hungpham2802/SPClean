@@ -73,10 +73,12 @@ function Test-SPCLicenseKeyInternal {
     # 1. Trim
     $key = $LicenseKey.Trim()
 
-    # 2. Validate UUID format
-    $guid = [System.Guid]::empty
-    if (-not [System.Guid]::TryParse($key, [ref]$guid)) {
-        return (& $makeInvalid 'MalformedFormat')
+    # 2. Validate license format (Gumroad keys: XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX)
+    if ($key -notmatch '^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{8}-[A-Fa-f0-9]{8}-[A-Fa-f0-9]{8}$') {
+        $guid = [System.Guid]::empty
+        if (-not [System.Guid]::TryParse($key, [ref]$guid)) {
+            return (& $makeInvalid 'MalformedFormat')
+        }
     }
 
     # 3. Try PRO

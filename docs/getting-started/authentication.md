@@ -51,12 +51,19 @@ Requires an Entra app registration with a certificate credential.
 ### Connect
 
 ```powershell
+# Sử dụng file PFX:
 $certPwd = Read-Host -AsSecureString 'Certificate password'
 Connect-SPCTenant -TenantName contoso `
     -AuthMethod AppOnly `
     -ClientId    '<your-app-client-id>' `
     -CertificatePath C:\certs\spclean.pfx `
     -CertificatePassword $certPwd
+
+# Hoặc sử dụng Thumbprint (chứng chỉ đã được install vào máy):
+Connect-SPCTenant -TenantName contoso `
+    -AuthMethod AppOnly `
+    -ClientId    '<your-app-client-id>' `
+    -CertificateThumbprint '1234567890ABCDEF'
 ```
 
 ---

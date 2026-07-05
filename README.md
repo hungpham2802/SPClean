@@ -3,7 +3,7 @@
 > **PowerShell toolkit for SharePoint Online permission hygiene.**  
 > Find orphaned users, score risk, generate reports, and remove safely — without enterprise-software pricing.
 
-![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE?style=flat&logo=powershell&logoColor=white)
+![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?style=flat&logo=powershell&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-SharePoint%20Online-0078D4?style=flat&logo=microsoft-sharepoint&logoColor=white)
 ![PSGallery Version](https://img.shields.io/powershellgallery/v/SPClean?label=PSGallery&color=28a745&style=flat)
 ![PSGallery Downloads](https://img.shields.io/powershellgallery/dt/SPClean?color=blue&style=flat)
@@ -237,6 +237,7 @@ Connect-SPCTenant
     -TenantName           <string>               # Required. 'contoso', 'contoso.onmicrosoft.com', etc.
     [-AuthMethod          Interactive|AppOnly]   # Default: Interactive
     [-ClientId            <string>]              # Required for Interactive and AppOnly
+    [-CertificateThumbprint <string>]            # AppOnly: certificate thumbprint
     [-CertificatePath     <string>]              # AppOnly: path to .pfx
     [-CertificatePassword <SecureString>]        # AppOnly: .pfx password
     [-ClientSecret        <SecureString>]        # AppOnly: client secret (alternative to certificate)
@@ -403,8 +404,9 @@ Generates a self-contained scan script and registers a Windows Scheduled Task. A
 New-SPCScanSchedule
     -TenantName          <string>
     -ClientId            <string>
-    -CertificatePath     <string>
-    -CertificatePassword <SecureString>
+    [-CertificateThumbprint <string>]
+    [-CertificatePath     <string>]
+    [-CertificatePassword <SecureString>]
     [-Schedule           Daily|Weekly|Monthly]
     [-ScheduleAt         <datetime>]
     [-ReportFormat       HTML|CSV|JSON]          # Default: HTML
@@ -528,8 +530,8 @@ Disconnect-SPCTenant
 ### `ERR-AUTH-001: Cannot resolve tenant URL from TenantName`
 Pass just the short name: `contoso`, not a full URL.
 
-### `ERR-AUTH-003: AppOnly auth requires -ClientId and either -CertificatePath or -ClientSecret`
-Ensure all three parameters are supplied for AppOnly auth.
+### `ERR-AUTH-003: AppOnly auth requires -ClientId and one of -CertificateThumbprint, -CertificatePath or -ClientSecret`
+Ensure all three parameters are supplied for AppOnly auth (or at least ClientId + one credential type).
 
 ### `ERR-AUTH-004: Interactive auth requires -ClientId in PnP.PowerShell 3.x`
 PnP.PowerShell 3.x removed the implicit default app. Provide `-ClientId` with your Entra app's client ID.

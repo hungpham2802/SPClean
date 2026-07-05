@@ -14,8 +14,9 @@ Generates a self-contained scan script and registers a Windows Scheduled Task th
 New-SPCScanSchedule
     -TenantName          <string>
     -ClientId            <string>
-    -CertificatePath     <string>
-    -CertificatePassword <SecureString>
+    [-CertificateThumbprint <string>]
+    [-CertificatePath     <string>]
+    [-CertificatePassword <SecureString>]
     [-Schedule           Daily | Weekly | Monthly]
     [-ScheduleAt         <datetime>]
     [-ReportFormat       HTML | CSV | JSON]
@@ -30,8 +31,9 @@ New-SPCScanSchedule
 | --- | --- | :---: | --- |
 | `-TenantName` | `string` | ✅ | Short tenant name or full domain |
 | `-ClientId` | `string` | ✅ | Entra App Registration client ID (AppOnly) |
-| `-CertificatePath` | `string` | ✅ | Path to `.pfx` certificate |
-| `-CertificatePassword` | `SecureString` | ✅ | Password for the `.pfx` file |
+| `-CertificateThumbprint` | `string` | | Thumbprint of the certificate installed in the local store |
+| `-CertificatePath` | `string` | | Path to `.pfx` certificate (required if Thumbprint is not used) |
+| `-CertificatePassword` | `SecureString` | | Password for the `.pfx` file |
 | `-Schedule` | `Daily \| Weekly \| Monthly` | | Recurrence. Mutually exclusive with `-ScheduleAt` |
 | `-ScheduleAt` | `datetime` | | One-time execution at this date/time |
 | `-ReportFormat` | `HTML \| CSV \| JSON` | | Format for the generated report. Default: `HTML` |

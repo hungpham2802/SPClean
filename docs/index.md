@@ -8,7 +8,7 @@ hide:
 > **PowerShell toolkit for SharePoint Online permission hygiene.**  
 > Find orphaned users, score risk, generate reports, and remove safely — without enterprise-software pricing.
 
-[![PowerShell](https://img.shields.io/badge/PowerShell-5.1%20%7C%207%2B-5391FE?style=flat&logo=powershell&logoColor=white)](https://www.powershellgallery.com/packages/SPClean)
+[![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?style=flat&logo=powershell&logoColor=white)](https://www.powershellgallery.com/packages/SPClean)
 [![PSGallery](https://img.shields.io/powershellgallery/v/SPClean?label=PSGallery&color=5391FE&logo=powershell&logoColor=white)](https://www.powershellgallery.com/packages/SPClean)
 [![PSGallery Downloads](https://img.shields.io/powershellgallery/dt/SPClean?label=Downloads&color=28a745)](https://www.powershellgallery.com/packages/SPClean)
 [![License](https://img.shields.io/badge/License-MIT-28a745?style=flat)](https://github.com/hungpham2802/SPClean/blob/main/LICENSE)

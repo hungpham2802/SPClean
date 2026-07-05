@@ -6,7 +6,7 @@
     CompanyName       = 'Community'       # TODO: replace or set to 'Community'
     Copyright         = '(c) 2026 Hung Pham. Licensed under the MIT License.'
     Description       = 'Detects, reports, and remediates orphaned users in SharePoint Online. Identifies accounts in the User Information List whose Entra ID state is Deleted, SoftDeleted, Disabled, or GuestOrphaned. Supports AppOnly (certificate) and Interactive authentication, HTML/CSV/JSON reports, permission snapshots, and Windows Scheduled Task automation.'
-    PowerShellVersion = '5.1'
+    PowerShellVersion = '7.0'
 
     RequiredModules   = @(
         @{ ModuleName = 'PnP.PowerShell'; ModuleVersion = '2.0.0' }

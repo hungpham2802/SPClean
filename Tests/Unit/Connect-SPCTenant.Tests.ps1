@@ -44,6 +44,27 @@ Describe 'Connect-SPCTenant' {
         }
     }
 
+    Context 'Successful AppOnly (certificate thumbprint) connection' {
+        It 'AC-11: connects without throwing when thumbprint provided' {
+            { Connect-SPCTenant -TenantName 'contoso' -AuthMethod AppOnly `
+                  -ClientId 'abc' -CertificateThumbprint '1234567890ABCDEF' } | Should -Not -Throw
+        }
+
+        It 'AC-11: stores _CertificateThumbprint in context' {
+            Connect-SPCTenant -TenantName 'contoso' -AuthMethod AppOnly `
+                -ClientId 'abc' -CertificateThumbprint '1234567890ABCDEF' | Out-Null
+            $script:SPCContext._CertificateThumbprint | Should -Be '1234567890ABCDEF'
+        }
+
+        It 'AC-11: prioritizes Thumbprint over CertificatePath' {
+            $fakePwd = ConvertTo-SecureString 'fake' -AsPlainText -Force
+            Connect-SPCTenant -TenantName 'contoso' -AuthMethod AppOnly `
+                -ClientId 'abc' -CertificatePath 'C:\fake.pfx' -CertificatePassword $fakePwd `
+                -CertificateThumbprint '1234567890ABCDEF' | Out-Null
+            $script:SPCContext._CertificateThumbprint | Should -Be '1234567890ABCDEF'
+        }
+    }
+
     Context 'Successful Interactive connection' {
         It 'AC-11: returns SPC.ConnectionInfo object' {
             $result = Connect-SPCTenant -TenantName 'contoso'

@@ -9,6 +9,7 @@ Connect-SPCTenant
     -TenantName           <string>
     [-AuthMethod          Interactive | AppOnly]
     [-ClientId            <string>]
+    [-CertificateThumbprint <string>]
     [-CertificatePath     <string>]
     [-CertificatePassword <SecureString>]
     [-ClientSecret        <SecureString>]
@@ -21,6 +22,7 @@ Connect-SPCTenant
 | `-TenantName` | `string` | ✅ | Short name (`contoso`), full domain (`contoso.onmicrosoft.com`), or SharePoint root URL |
 | `-AuthMethod` | `Interactive \| AppOnly` | | Authentication method. Default: `Interactive` |
 | `-ClientId` | `string` | | Entra App Registration client ID. Required for Interactive and AppOnly |
+| `-CertificateThumbprint` | `string` | | Thumbprint of the certificate installed in the local store. AppOnly only |
 | `-CertificatePath` | `string` | | Path to `.pfx` certificate file. AppOnly only |
 | `-CertificatePassword` | `SecureString` | | Password for the `.pfx` file. AppOnly only |
 | `-ClientSecret` | `SecureString` | | Client secret. AppOnly alternative to certificate |
@@ -35,7 +37,7 @@ Connect-SPCTenant
 | --- | --- |
 | `ERR-AUTH-001` | Cannot resolve tenant URL from TenantName |
 | `ERR-AUTH-002` | Authentication failed — invalid credentials or insufficient permissions |
-| `ERR-AUTH-003` | AppOnly auth requires `-ClientId` and either `-CertificatePath` or `-ClientSecret` |
+| `ERR-AUTH-003` | AppOnly auth requires `-ClientId` and one of `-CertificateThumbprint`, `-CertificatePath` or `-ClientSecret` |
 | `ERR-AUTH-004` | Interactive auth requires `-ClientId` in PnP.PowerShell 3.x |
 
 ## Examples
@@ -46,7 +48,7 @@ Connect-SPCTenant
     Connect-SPCTenant -TenantName contoso -ClientId '<delegated-app-id>'
     ```
 
-=== "AppOnly — Certificate"
+=== "AppOnly — Certificate File"
 
     ```powershell
     $certPwd = Read-Host -AsSecureString 'Certificate password'
@@ -55,6 +57,15 @@ Connect-SPCTenant
         -ClientId        '<app-id>' `
         -CertificatePath C:\certs\spclean.pfx `
         -CertificatePassword $certPwd
+    ```
+
+=== "AppOnly — Certificate Thumbprint"
+
+    ```powershell
+    Connect-SPCTenant -TenantName contoso `
+        -AuthMethod            AppOnly `
+        -ClientId              '<app-id>' `
+        -CertificateThumbprint '1234567890ABCDEF'
     ```
 
 === "AppOnly — Client Secret"

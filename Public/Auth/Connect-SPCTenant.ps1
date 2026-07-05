@@ -54,6 +54,10 @@ function Connect-SPCTenant {
         [System.Security.SecureString] $CertificatePassword,
 
         [Parameter()]
+        [Alias('Thumbprint')]
+        [string] $CertificateThumbprint,
+
+        [Parameter()]
         [System.Security.SecureString] $ClientSecret
     )
 
@@ -73,8 +77,8 @@ function Connect-SPCTenant {
         # ERR-AUTH-003: validate AppOnly parameter combination
         if ($AuthMethod -eq 'AppOnly') {
             if ([string]::IsNullOrWhiteSpace($ClientId) -or
-                ([string]::IsNullOrWhiteSpace($CertificatePath) -and $null -eq $ClientSecret)) {
-                throw 'ERR-AUTH-003: AppOnly auth requires -ClientId and either -CertificatePath or -ClientSecret.'
+                ([string]::IsNullOrWhiteSpace($CertificateThumbprint) -and [string]::IsNullOrWhiteSpace($CertificatePath) -and $null -eq $ClientSecret)) {
+                throw 'ERR-AUTH-003: AppOnly auth requires -ClientId and one of: -CertificateThumbprint, -CertificatePath, or -ClientSecret.'
             }
         }
 
@@ -91,13 +95,23 @@ function Connect-SPCTenant {
         try {
             if ($AuthMethod -eq 'Interactive') {
                 Write-Verbose "Connecting interactively to $adminUrl"
+                Write-Host "SPClean requires 2 separate logins for Interactive mode. Please complete BOTH browser prompts (1 for SharePoint, 1 for Microsoft Graph)." -ForegroundColor Cyan
                 $pnpContext = Connect-PnPOnline -Url $adminUrl -Interactive -ClientId $ClientId -ReturnConnection
+                
                 # Connect-MgGraph for Graph cmdlets (SRS 3.1.1 step 2)
-                Connect-MgGraph -Scopes 'User.Read.All', 'Directory.Read.All' -NoWelcome |
+                Connect-MgGraph -Scopes 'User.Read.All', 'Directory.Read.All' -NoWelcome -ErrorAction Stop |
                     Out-Null
 
+            } elseif (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {
+                Write-Verbose "Connecting AppOnly (certificate thumbprint) to $adminUrl"
+                $tenantId   = if ($shortName -match '\.') { $shortName } else { "$shortName.onmicrosoft.com" }
+                $pnpContext = Connect-PnPOnline -Url $adminUrl -ClientId $ClientId `
+                    -Tenant $tenantId `
+                    -Thumbprint $CertificateThumbprint `
+                    -ReturnConnection
+
             } elseif (-not [string]::IsNullOrWhiteSpace($CertificatePath)) {
-                Write-Verbose "Connecting AppOnly (certificate) to $adminUrl"
+                Write-Verbose "Connecting AppOnly (certificate file) to $adminUrl"
                 # Azure AD requires a valid DNS name; append .onmicrosoft.com when only short name given
                 $tenantId   = if ($shortName -match '\.') { $shortName } else { "$shortName.onmicrosoft.com" }
                 $pnpContext = Connect-PnPOnline -Url $adminUrl -ClientId $ClientId `
@@ -134,6 +148,7 @@ function Connect-SPCTenant {
             PnPContext           = $pnpContext
             GraphAccessToken     = $graphToken
             _ClientId            = $ClientId
+            _CertificateThumbprint = $CertificateThumbprint
             _CertificatePath     = $CertificatePath
             _CertificatePassword = $CertificatePassword   # SecureString — never plain text
             _ClientSecret        = $ClientSecret          # SecureString — never plain text
