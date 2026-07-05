@@ -12,6 +12,7 @@ Get-SPCOrphanedUser
     [-IncludeDisabled]
     [-ExcludeSiteUrl <string[]>]
     [-ThrottleLimit  <int>]
+    [-AddTempSiteCollectionAdmin]
 ```
 
 ## Parameters
@@ -24,6 +25,7 @@ Get-SPCOrphanedUser
 | `-IncludeDisabled` | switch | | Include Entra-disabled accounts (not yet deleted) |
 | `-ExcludeSiteUrl` | `string[]` | | URL patterns to skip when using `-AllSites`. Supports wildcards |
 | `-ThrottleLimit` | `int` | | Maximum concurrent site connections. Default: `3`, maximum: `10` |
+| `-AddTempSiteCollectionAdmin` | switch | | Automatically elevate executor to Site Collection Administrator (Interactive mode only) during execution if access is denied, then revert afterwards. |
 
 ## Returns
 
@@ -94,6 +96,7 @@ Get-SPCOrphanedUser -SiteUrl $url |
 ## Notes
 
 - Requires an active connection established by `Connect-SPCTenant`.
+- Interactive mode scanning requires Site Collection Administrator (SCA) privileges on target sites. Use `-AddTempSiteCollectionAdmin` to auto-elevate if necessary.
 - System accounts (`SHAREPOINT\system`, `NT AUTHORITY\*`, claim type `c:0(.s|true)`) are automatically filtered and never returned.
 - `AllSites` uses `Write-Progress` to display a progress bar across the tenant scan.
 - Detection uses Microsoft Graph batch requests for efficient Entra ID lookups.

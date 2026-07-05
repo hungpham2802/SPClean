@@ -10,6 +10,7 @@ Re-applies direct permission assignments from a JSON snapshot file created by `R
 ```powershell
 Restore-SPCOrphanedUser
     -SnapshotPath <string>
+    [-AddTempSiteCollectionAdmin]
     [-WhatIf]
     [-Confirm]
 ```
@@ -19,6 +20,7 @@ Restore-SPCOrphanedUser
 | Parameter | Type | Required | Description |
 | --- | --- | :---: | --- |
 | `-SnapshotPath` | `string` | ✅ | Full path to the `.json` snapshot file created by `Remove-SPCOrphanedUser -CreateSnapshot` |
+| `-AddTempSiteCollectionAdmin` | switch | | Automatically elevate executor to Site Collection Administrator (Interactive mode only) during execution if access is denied, then revert afterwards. |
 | `-WhatIf` | switch | | Print what would be restored without making any changes |
 | `-Confirm` | switch | | Prompt before applying each permission |
 
@@ -46,6 +48,7 @@ Restore-SPCOrphanedUser
 
 - **This cmdlet is gated** — `Restore-SPCOrphanedUser` requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
 - The snapshot file must have been created by `Remove-SPCOrphanedUser -CreateSnapshot`. Manually edited or externally generated JSON files are not supported.
+- Interactive mode requires Site Collection Administrator (SCA) privileges on target sites to restore role assignments. Use `-AddTempSiteCollectionAdmin` to auto-elevate if necessary.
 - Use `-WhatIf` first to verify the snapshot content and confirm the target site is reachable before committing.
 
 ## Examples

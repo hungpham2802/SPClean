@@ -20,6 +20,7 @@ Remove-SPCOrphanedUser
     [-OrphanType  Deleted | SoftDeleted | Disabled | GuestOrphaned]
     [-CreateSnapshot]
     [-SnapshotPath <string>]
+    [-AddTempSiteCollectionAdmin]
     [-Force]
     [-WhatIf]
     [-Confirm]
@@ -34,6 +35,7 @@ Remove-SPCOrphanedUser
 | `-OrphanType` | `Deleted \| SoftDeleted \| Disabled \| GuestOrphaned` | | Filter by orphan type. Default: `Deleted` only |
 | `-CreateSnapshot` | switch | | Save a JSON permission snapshot before each removal *(Pro/Consultant)* |
 | `-SnapshotPath` | `string` | | Directory for snapshot files. Required when `-CreateSnapshot` is used |
+| `-AddTempSiteCollectionAdmin` | switch | | Automatically elevate executor to Site Collection Administrator (Interactive mode only) during execution if access is denied, then revert afterwards. |
 | `-Force` | switch | | Suppress `-Confirm` prompts |
 | `-WhatIf` | switch | | Print what would be removed without making any changes |
 | `-Confirm` | switch | | Prompt before each removal |
@@ -65,6 +67,7 @@ Use `Restore-SPCOrphanedUser` to re-apply permissions from a snapshot.
 ## Notes
 
 - **`-CreateSnapshot` is gated** — saving a permission snapshot before removal requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
+- Interactive mode requires Site Collection Administrator (SCA) privileges on target sites to query and remove role assignments. Use `-AddTempSiteCollectionAdmin` to auto-elevate if necessary.
 - `-WhatIf` is always available on all tiers and performs no writes.
 - Always run with `-WhatIf` first when processing a new site to confirm the scope before committing.
 - The cmdlet emits one `SPC.RemovalResult` object per input record, so results can be piped to `Where-Object` to filter successes and failures.

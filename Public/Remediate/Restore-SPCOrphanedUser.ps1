@@ -37,7 +37,10 @@ function Restore-SPCOrphanedUser {
     [OutputType([PSCustomObject])]
     param(
         [Parameter(Mandatory)]
-        [string] $SnapshotPath
+        [string] $SnapshotPath,
+
+        [Parameter()]
+        [switch] $AddTempSiteCollectionAdmin
     )
 
     begin {
@@ -101,8 +104,8 @@ function Restore-SPCOrphanedUser {
                 ErrorMessage        = $null
                 RestoredAt          = $null
             }
-            $preview.PSObject.TypeNames.Insert(0, 'SPC.RestoreResult')
-            $preview
+            $out.PSObject.TypeNames.Insert(0, 'SPC.RestoreResult')
+            $out
             return
         }
 
@@ -139,11 +142,41 @@ function Restore-SPCOrphanedUser {
             }
         }
 
+        $removeSca = $false
+        $myUPN = $null
+
         try {
-            $siteConn = & $connectToSite -Url $siteUrl -Ctx $ctx
-        } catch {
-            throw "Restore-SPCOrphanedUser: Cannot connect to '$siteUrl'. $_"
-        }
+            try {
+                $siteConn = & $connectToSite -Url $siteUrl -Ctx $ctx
+                try {
+                    Get-PnPWeb -Connection $siteConn -ErrorAction Stop | Out-Null
+                } catch [System.UnauthorizedAccessException], [System.Exception] {
+                    if ($_.Exception.Message -match "401" -or $_.Exception.Message -match "403" -or $_.Exception.Message -match "Access denied" -or $_.Exception.Message -match "Unauthorized") {
+                        if ($AddTempSiteCollectionAdmin) {
+                            if ($ctx.AuthMethod -ne 'Interactive') {
+                                Write-Warning "Restore-SPCOrphanedUser: Access Denied on $siteUrl. -AddTempSiteCollectionAdmin is only supported for Interactive auth."
+                                throw "Access Denied"
+                            }
+                            Write-Verbose "Restore-SPCOrphanedUser: Access Denied. Attempting to add temporary Site Collection Admin rights."
+                            $me = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($ctx.GraphAccessToken)" } -ErrorAction Stop
+                            $myUPN = $me.userPrincipalName
+                            
+                            Set-PnPTenantSite -Connection $ctx.PnPContext -Url $siteUrl -Owners $myUPN -ErrorAction Stop
+                            $removeSca = $true
+                            
+                            Start-Sleep -Seconds 5
+                            $siteConn = & $connectToSite -Url $siteUrl -Ctx $ctx
+                        } else {
+                            Write-Warning "Restore-SPCOrphanedUser: Access Denied on $siteUrl. You must be a Site Collection Administrator or use -AddTempSiteCollectionAdmin."
+                            throw "Access Denied"
+                        }
+                    } else {
+                        throw $_
+                    }
+                }
+            } catch {
+                throw "Restore-SPCOrphanedUser: Cannot connect to '$siteUrl' or access denied. $_"
+            }
 
         $restoredCount = 0
         $failedCount   = 0
@@ -192,5 +225,11 @@ function Restore-SPCOrphanedUser {
         }
         $result.PSObject.TypeNames.Insert(0, 'SPC.RestoreResult')
         $result
+        } finally {
+            if ($removeSca -and $myUPN) {
+                Write-Verbose "Restore-SPCOrphanedUser: Removing temporary Site Collection Admin rights for $myUPN on $siteUrl"
+                Remove-PnPSiteCollectionAdmin -Connection $siteConn -Owners $myUPN -ErrorAction SilentlyContinue
+            }
+        }
     }
 }

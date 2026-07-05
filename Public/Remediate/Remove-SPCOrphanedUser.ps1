@@ -3,8 +3,14 @@ if (Get-Command -Name 'Remove-PnPUser' -Module PnP.PowerShell -ErrorAction Silen
     $__pnpRemoveUser = Get-Command 'Remove-PnPUser' -Module PnP.PowerShell
     function Remove-PnPUser {
         [CmdletBinding()] param([string]$LoginName, [object]$Connection, [switch]$Confirm, [switch]$Force)
-        # PnP 3.x uses -Identity (UserPipeBind); -Force suppresses ShouldContinue; binary has no -Confirm param
-        & $__pnpRemoveUser -Identity $LoginName -Connection $Connection -Force -ErrorAction Stop
+        $params = @{}; foreach ($k in $PSBoundParameters.Keys) { $params[$k] = $PSBoundParameters[$k] }
+        if ($params.ContainsKey('LoginName')) {
+            $params['Identity'] = $params['LoginName']
+            $params.Remove('LoginName') | Out-Null
+        }
+        $params.Remove('Confirm') | Out-Null
+        $params['Force'] = $true
+        & $__pnpRemoveUser @params
     }
 }
 # PnP 3.x removed Get-PnPRoleAssignment and Remove-PnPRoleAssignment; wrap Set-/Get-PnPWebPermission.
@@ -13,18 +19,18 @@ if (-not (Get-Command -Name 'Get-PnPRoleAssignment' -ErrorAction SilentlyContinu
         [CmdletBinding()]
         param([string] $LoginName, [Parameter()] [object] $Connection)
         try {
-            $u = Get-PnPUser -LoginName $LoginName -Connection $Connection -ErrorAction SilentlyContinue
+            $u = Get-PnPUser -LoginName $LoginName -Connection $Connection -ErrorAction Stop
             if (-not $u) { return @() }
-            @(Get-PnPWebPermission -PrincipalId $u.Id -Connection $Connection -ErrorAction SilentlyContinue |
+            @(Get-PnPWebPermission -PrincipalId $u.Id -Connection $Connection -ErrorAction Stop |
               ForEach-Object { [PSCustomObject]@{ RoleDefinitionId = $_.Name } })
-        } catch { return @() }
+        } catch { throw }
     }
 }
 if (-not (Get-Command -Name 'Remove-PnPRoleAssignment' -ErrorAction SilentlyContinue)) {
     function Remove-PnPRoleAssignment {
         [CmdletBinding()]
         param([string] $LoginName, [string] $RoleDefinition, [Parameter()] [object] $Connection)
-        Set-PnPWebPermission -User $LoginName -RemoveRole $RoleDefinition -Connection $Connection -ErrorAction SilentlyContinue
+        Set-PnPWebPermission -User $LoginName -RemoveRole $RoleDefinition -Connection $Connection -ErrorAction Stop
     }
 }
 
@@ -47,6 +53,8 @@ function Remove-SPCOrphanedUser {
         Export a JSON permission snapshot for each user BEFORE removal.
     .PARAMETER SnapshotPath
         Directory for snapshot files. Defaults to .\SPClean_Snapshots\{timestamp}\.
+    .PARAMETER AddTempSiteCollectionAdmin
+        Temporarily add executor as Site Collection Administrator if access is denied.
     .PARAMETER Force
         Suppress -Confirm prompts. Logs a warning when used.
     .EXAMPLE
@@ -75,6 +83,9 @@ function Remove-SPCOrphanedUser {
 
         [Parameter()]
         [string] $SnapshotPath,
+
+        [Parameter()]
+        [switch] $AddTempSiteCollectionAdmin,
 
         [Parameter()]
         [switch] $Force
@@ -154,6 +165,7 @@ function Remove-SPCOrphanedUser {
         $errorCount   = 0
         $siteSet      = [System.Collections.Generic.HashSet[string]]::new()
         $siteCache    = @{}   # SiteUrl → PnP connection — avoid reconnecting per user
+        $tempScaAdded = @{}   # SiteUrl → myUPN
 
         foreach ($item in $toProcess) {
             # SRS 3.4.1 step 1: WhatIf — write to information stream, skip all further steps
@@ -173,9 +185,35 @@ function Remove-SPCOrphanedUser {
             # Establish site connection (cached per site)
             if (-not $siteCache.ContainsKey($item.SiteUrl)) {
                 try {
-                    $siteCache[$item.SiteUrl] = & $connectToSite -Url $item.SiteUrl -Ctx $ctx
+                    $siteConn = & $connectToSite -Url $item.SiteUrl -Ctx $ctx
+                    try {
+                        Get-PnPWeb -Connection $siteConn -ErrorAction Stop | Out-Null
+                    } catch [System.UnauthorizedAccessException], [System.Exception] {
+                        if ($_.Exception.Message -match "401" -or $_.Exception.Message -match "403" -or $_.Exception.Message -match "Access denied" -or $_.Exception.Message -match "Unauthorized") {
+                            if ($AddTempSiteCollectionAdmin) {
+                                if ($ctx.AuthMethod -ne 'Interactive') {
+                                    Write-Warning "Remove-SPCOrphanedUser: Access Denied on $($item.SiteUrl). -AddTempSiteCollectionAdmin is only supported for Interactive auth. Skipping site."
+                                    throw "Access Denied"
+                                }
+                                Write-Verbose "Remove-SPCOrphanedUser: Access Denied. Attempting to add temporary Site Collection Admin rights."
+                                $me = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($ctx.GraphAccessToken)" } -ErrorAction Stop
+                                $myUPN = $me.userPrincipalName
+                                
+                                Set-PnPTenantSite -Connection $ctx.PnPContext -Url $item.SiteUrl -Owners $myUPN -ErrorAction Stop
+                                $tempScaAdded[$item.SiteUrl] = $myUPN
+                                Start-Sleep -Seconds 5
+                                $siteConn = & $connectToSite -Url $item.SiteUrl -Ctx $ctx
+                            } else {
+                                Write-Warning "Remove-SPCOrphanedUser: Access Denied on $($item.SiteUrl). You must be a Site Collection Administrator or use -AddTempSiteCollectionAdmin."
+                                throw "Access Denied"
+                            }
+                        } else {
+                            throw $_
+                        }
+                    }
+                    $siteCache[$item.SiteUrl] = $siteConn
                 } catch {
-                    Write-Error "Remove-SPCOrphanedUser: Cannot connect to '$($item.SiteUrl)'. $_"
+                    Write-Error "Remove-SPCOrphanedUser: Cannot connect to '$($item.SiteUrl)' or access denied. $_"
                     $errorCount++
                     continue
                 }
@@ -294,13 +332,22 @@ function Remove-SPCOrphanedUser {
                 $r = [int]$this.RemovedFromUIL
                 "Removed $r orphaned users across $r sites. Skipped $([int](-not $this.RemovedFromUIL)) due to errors (see error stream)."
             } -Force
-            $result
+            $result   # SRS step 6: write object to pipeline
+        }
+
+        # Cleanup Temporary SCA
+        foreach ($site in $tempScaAdded.Keys) {
+            $myUPN = $tempScaAdded[$site]
+            $siteConn = $siteCache[$site]
+            try {
+                Write-Verbose "Remove-SPCOrphanedUser: Removing temporary Site Collection Admin rights for $myUPN on $site"
+                Remove-PnPSiteCollectionAdmin -Connection $siteConn -Owners $myUPN -ErrorAction SilentlyContinue
+            } catch {}
         }
 
         # SRS step 6: summary to information stream (suppressed in WhatIf — nothing was executed)
-        $siteCount = $siteSet.Count
         if (-not $WhatIfPreference) {
-            Write-Information "Removed $removedCount orphaned users across $siteCount sites. Skipped $errorCount due to errors (see error stream)." -InformationAction Continue
+            Write-Host "Removed $removedCount orphaned users across $($siteSet.Count) sites. Skipped $errorCount due to errors (see error stream)."
         }
     }
 }

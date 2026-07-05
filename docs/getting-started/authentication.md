@@ -31,7 +31,10 @@ Requires an Entra app registration configured for delegated auth.
 Connect-SPCTenant -TenantName contoso -ClientId '<your-app-client-id>'
 ```
 
-A browser window opens for sign-in. Use an account with SharePoint Admin or Site Collection Admin rights.
+A browser window opens for sign-in. You must authenticate with an account that has **SharePoint Administrator** or **Global Administrator** privileges to connect to the tenant.
+
+!!! note "Site Collection Administrator Requirement"
+    Scanning or modifying individual sites requires **Site Collection Administrator (SCA)** privileges on those specific sites. If you are a SharePoint Admin but not an SCA of the target sites, use the `-AddTempSiteCollectionAdmin` switch on cmdlets like `Get-SPCOrphanedUser` to automatically elevate your permissions during execution.
 
 ---
 
