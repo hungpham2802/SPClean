@@ -15,7 +15,7 @@ SPClean uses a **key-based license** verified entirely offline — no internet c
 | Restore permissions from snapshot | — | ✅ | ✅ |
 | Scheduled automated scans | — | ✅ | ✅ |
 | **Unlimited tenants** | — | — | ✅ |
-| White-label HTML report (`-BrandingName`) | — | — | 🔜 v1.1 |
+| White-label HTML report (`-BrandingName`) | — | — | ✅ |
 | Priority support | — | — | ✅ |
 | Intended use | Personal / evaluation | Single-org admin | MSP / multi-tenant consultant |
 
@@ -63,6 +63,7 @@ Get-SPCLicenseInfo
 Status      : Active
 Tier        : PRO
 Email       : you@contoso.com
+ExpiresAt   : 2027-06-22T12:00:00.0000000Z
 ```
 
 ---

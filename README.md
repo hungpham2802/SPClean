@@ -47,7 +47,7 @@ SPClean uses a **free + paid tier** model. Core scanning is always free.
 | --- | --- | --- |
 | **Free** | $0 forever | Unlimited site scan · CSV export · WhatIf dry-run |
 | **Pro** | $79 / tenant / year | HTML report · Scheduled scan · Snapshot & restore |
-| **Consultant** | $149 / year | Unlimited tenants · Priority support |
+| **Consultant** | $149 / year | Unlimited tenants · White-label HTML report · Priority support |
 
 **→ [Purchase a license at ngochung47.gumroad.com](https://ngochung47.gumroad.com/)**
 
@@ -322,6 +322,7 @@ Export-SPCReport
     [-OutputPath  <string>]                    # Default: auto-named file in current directory
     [-GroupBy     Site|RiskLevel|OrphanType]   # Default: Site
     [-IncludeSummary]                          # Prepend summary card (totals, breakdowns)
+    [-BrandingName <string>]                   # Override 'SPClean' with custom brand name [Consultant]
     [-PassThru]                                # Pass input objects through the pipeline
 ```
 

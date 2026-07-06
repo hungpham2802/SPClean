@@ -186,6 +186,15 @@ function Get-SPCOrphanedUser {
 
         foreach ($currentSiteUrl in $pendingSites) {
             $siteIdx++
+
+            # Refresh Graph token if older than 50 minutes to avoid expiration during long scans
+            $timeSinceConnect = (Get-Date).ToUniversalTime() - $ctx.ConnectedAt
+            if ($timeSinceConnect.TotalMinutes -gt 50) {
+                Write-Verbose "Get-SPCOrphanedUser: Graph token is older than 50 minutes. Refreshing..."
+                $graphToken = Get-PnPGraphAccessToken -Connection $ctx.PnPContext
+                $ctx.GraphAccessToken = $graphToken
+                $ctx.ConnectedAt = (Get-Date).ToUniversalTime()
+            }
             if ($showProgress) {
                 Write-Progress -Activity 'Get-SPCOrphanedUser' `
                     -Status "[$siteIdx/$total] $currentSiteUrl" `
@@ -318,12 +327,18 @@ function Get-SPCOrphanedUser {
                 if ($notFoundItems.Count -gt 0) {
                     Write-Verbose "Get-SPCOrphanedUser: Checking deleted items for $($notFoundItems.Count) missing users"
                     $delRequests = [System.Collections.Generic.List[hashtable]]::new()
+                    $seenDelUpns = @{}
+                    $delId = 1
                     foreach ($item in $notFoundItems) {
-                        $delRequests.Add(@{
-                            id     = "del_$($item.UPN)"
-                            method = 'GET'
-                            url    = "/directory/deletedItems/microsoft.graph.user?`$filter=userPrincipalName eq '$($item.UPN)'&`$select=id,userPrincipalName"
-                        })
+                        if (-not $seenDelUpns.ContainsKey($item.UPN)) {
+                            $seenDelUpns[$item.UPN] = $true
+                            $delRequests.Add(@{
+                                id     = "del_$delId"
+                                method = 'GET'
+                                url    = "/directory/deletedItems/microsoft.graph.user?`$filter=userPrincipalName eq '$($item.UPN)'&`$select=id,userPrincipalName"
+                            })
+                            $delId++
+                        }
                     }
                     $delResponses = Invoke-SPCGraphBatch -Requests $delRequests -AccessToken $graphToken
                     foreach ($resp in $delResponses) {
@@ -354,9 +369,13 @@ function Get-SPCOrphanedUser {
                 if ($siRequests.Count -gt 0) {
                     Write-Verbose "Get-SPCOrphanedUser: Sign-in activity for $($siRequests.Count) users"
                     $siResponses = Invoke-SPCGraphBatch -Requests $siRequests -AccessToken $graphToken
+                    $warnedSignIn = $false
                     foreach ($resp in $siResponses) {
                         $origId = $siReqToId[$resp.id]
-                        if ($origId -and $resp.status -eq 200 -and $resp.body.lastSignInDateTime) {
+                        if ($resp.status -eq 403 -and -not $warnedSignIn) {
+                            Write-Warning "SPClean: Unable to retrieve signInActivity. Missing 'AuditLog.Read.All' permission or Entra ID P1/P2 license. LastActivityDate will be empty."
+                            $warnedSignIn = $true
+                        } elseif ($origId -and $resp.status -eq 200 -and $resp.body.lastSignInDateTime) {
                             $signInMap[$origId] = [datetime]$resp.body.lastSignInDateTime
                         }
                     }
@@ -427,125 +446,6 @@ function Get-SPCOrphanedUser {
                 }
             }
 
-            $foundUsers    = @{}   # reqId → Graph user body (status 200)
-            $notFoundItems = [System.Collections.Generic.List[hashtable]]::new()  # 404 entries
-
-            foreach ($resp in $initialResponses) {
-                if (-not $requestIdMap.ContainsKey($resp.id)) { continue }
-                if ($resp.status -eq 200)  { $foundUsers[$resp.id] = $resp.body }
-                elseif ($resp.status -eq 404) { $notFoundItems.Add($requestIdMap[$resp.id]) }
-            }
-
-            # SRS step 10: soft-deleted check for all 404 users
-            $softDeletedUpns = @{}
-            if ($notFoundItems.Count -gt 0) {
-                $sdRequests = [System.Collections.Generic.List[hashtable]]::new()
-                $sdReqToUpn = @{}
-                $sdId       = 1
-                foreach ($entry in $notFoundItems) {
-                    $sdReqToUpn["$sdId"] = $entry.UPN
-                    $sdRequests.Add(@{
-                        id     = "$sdId"
-                        method = 'GET'
-                        url    = "/directory/deletedItems/microsoft.graph.user?`$filter=userPrincipalName eq '$($entry.UPN)'&`$select=id,userPrincipalName"
-                    })
-                    $sdId++
-                }
-                Write-Verbose "Get-SPCOrphanedUser: Soft-delete check for $($sdRequests.Count) users"
-                $sdResponses = Invoke-SPCGraphBatch -Requests $sdRequests -AccessToken $graphToken
-                foreach ($resp in $sdResponses) {
-                    if ($resp.status -eq 200 -and $resp.body.value.Count -gt 0) {
-                        $softDeletedUpns[$sdReqToUpn[$resp.id]] = $true
-                    }
-                }
-            }
-
-            # Sign-in activity batch for found (200) users — requires AuditLog.Read.All
-            $signInMap  = @{}   # reqId → DateTime
-            $siRequests = [System.Collections.Generic.List[hashtable]]::new()
-            $siReqToId  = @{}
-            $siId       = 1
-            foreach ($reqIdStr in $foundUsers.Keys) {
-                $userId = $foundUsers[$reqIdStr].id
-                if ($userId) {
-                    $siReqToId["$siId"] = $reqIdStr
-                    $siRequests.Add(@{
-                        id     = "$siId"
-                        method = 'GET'
-                        url    = "/users/$userId/signInActivity"
-                    })
-                    $siId++
-                }
-            }
-            if ($siRequests.Count -gt 0) {
-                Write-Verbose "Get-SPCOrphanedUser: Sign-in activity for $($siRequests.Count) users"
-                $siResponses = Invoke-SPCGraphBatch -Requests $siRequests -AccessToken $graphToken
-                foreach ($resp in $siResponses) {
-                    $origId = $siReqToId[$resp.id]
-                    if ($origId -and $resp.status -eq 200 -and $resp.body.lastSignInDateTime) {
-                        $signInMap[$origId] = [datetime]$resp.body.lastSignInDateTime
-                    }
-                }
-            }
-
-            # SRS step 11: classify and emit SPC.OrphanedUser objects
-            $detectedAt = (Get-Date).ToUniversalTime()
-
-            foreach ($reqIdStr in $requestIdMap.Keys) {
-                $entry     = $requestIdMap[$reqIdStr]
-                $user      = $entry.User
-                $upn       = $entry.UPN
-                $isGuest   = $user.LoginName -like '*#EXT#*'
-                $graphUser = $foundUsers[$reqIdStr]   # $null when 404
-
-                # SRS 3.2.1 step 10: OrphanType classification
-                $orphanType = $null
-                if ($null -ne $graphUser) {
-                    if (-not $graphUser.accountEnabled) {
-                        if ($isGuest -and $IncludeGuests)          { $orphanType = 'GuestOrphaned' }
-                        elseif (-not $isGuest -and $IncludeDisabled) { $orphanType = 'Disabled' }
-                    }
-                    # accountEnabled = true → active, not orphaned
-                } else {
-                    if ($isGuest) {
-                        if ($IncludeGuests) { $orphanType = 'GuestOrphaned' }
-                    } elseif ($softDeletedUpns.ContainsKey($upn)) {
-                        $orphanType = 'SoftDeleted'
-                    } else {
-                        $orphanType = 'Deleted'
-                    }
-                }
-
-                if ($null -eq $orphanType) { continue }
-
-                $hasDirectPerms = $directPermSet.ContainsKey($user.LoginName)
-                $userGroups     = if ($groupMembershipMap.ContainsKey($user.LoginName)) {
-                                      @($groupMembershipMap[$user.LoginName])
-                                  } else { @() }
-
-                $riskLevel = Get-SPCRiskLevel `
-                    -OrphanType           $orphanType `
-                    -HasDirectPermissions $hasDirectPerms `
-                    -GroupMembershipCount $userGroups.Count
-
-                $out = [PSCustomObject][ordered]@{
-                    SiteUrl              = $currentSiteUrl
-                    SiteTitle            = $siteTitle
-                    UserId               = $user.Id
-                    LoginName            = $user.LoginName
-                    DisplayName          = $user.Title
-                    Email                = $user.Email
-                    UPN                  = $upn
-                    OrphanType           = $orphanType
-                    RiskLevel            = $riskLevel
-                    HasDirectPermissions = $hasDirectPerms
-                    GroupMemberships     = $userGroups
-                    LastActivityDate     = $signInMap[$reqIdStr]
-                    DetectedAt           = $detectedAt
-                }
-                $out.PSObject.TypeNames.Insert(0, 'SPC.OrphanedUser')
-                $out   # SRS step 11: write to pipeline
-            }
         }
 
         if ($showProgress) {

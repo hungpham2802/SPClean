@@ -84,7 +84,7 @@ function Connect-SPCTenant {
 
         # ERR-AUTH-004: PnP 3.x removed the implicit default app — ClientId is required for Interactive auth
         if ($AuthMethod -eq 'Interactive' -and [string]::IsNullOrWhiteSpace($ClientId)) {
-            throw 'ERR-AUTH-004: Interactive auth requires -ClientId in PnP.PowerShell 3.x. Register an Entra app with delegated permissions (Sites.FullControl.All, User.Read.All, Directory.Read.All) and "Allow public client flows" enabled, then pass its client ID here.'
+            throw 'ERR-AUTH-004: Interactive auth requires -ClientId in PnP.PowerShell 3.x. Register an Entra app with delegated permissions (Sites.FullControl.All, User.Read.All, Directory.Read.All, AuditLog.Read.All) and "Allow public client flows" enabled, then pass its client ID here.'
         }
     }
 
@@ -99,7 +99,7 @@ function Connect-SPCTenant {
                 $pnpContext = Connect-PnPOnline -Url $adminUrl -Interactive -ClientId $ClientId -ReturnConnection
                 
                 # Connect-MgGraph for Graph cmdlets (SRS 3.1.1 step 2)
-                Connect-MgGraph -Scopes 'User.Read.All', 'Directory.Read.All' -NoWelcome -ErrorAction Stop |
+                Connect-MgGraph -Scopes 'User.Read.All', 'Directory.Read.All', 'AuditLog.Read.All' -NoWelcome -ErrorAction Stop |
                     Out-Null
 
             } elseif (-not [string]::IsNullOrWhiteSpace($CertificateThumbprint)) {

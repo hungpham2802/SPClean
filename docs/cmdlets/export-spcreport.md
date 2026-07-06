@@ -14,6 +14,7 @@ Export-SPCReport
     [-OutputPath  <string>]
     [-GroupBy     Site | RiskLevel | OrphanType]
     [-IncludeSummary]
+    [-BrandingName <string>]
     [-PassThru]
 ```
 
@@ -26,6 +27,7 @@ Export-SPCReport
 | `-OutputPath` | `string` | | Full path for the output file. Default: auto-named file in the current directory |
 | `-GroupBy` | `Site \| RiskLevel \| OrphanType` | | Sort/group rows by field. Default: `Site` |
 | `-IncludeSummary` | switch | | Prepend a summary card with totals and breakdown by risk level |
+| `-BrandingName` | `string` | | Override 'SPClean' with a custom brand name on HTML reports. **Requires Consultant license.** |
 | `-PassThru` | switch | | Pass input `SPC.OrphanedUser` objects through the pipeline after writing the report |
 
 ## Returns

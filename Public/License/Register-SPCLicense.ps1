@@ -41,6 +41,11 @@ function Register-SPCLicense {
     )
 
     process {
+        if (-not $script:SPCContext -or -not $script:SPCContext.TenantName) {
+            throw "ERR-LIC-005: You must connect to a SharePoint tenant using Connect-SPCTenant before registering a license."
+        }
+        $tenantName = $script:SPCContext.TenantName
+
         $trimmedKey = $LicenseKey.Trim()
 
         $result = Test-SPCLicenseKeyInternal -LicenseKey $trimmedKey
@@ -79,6 +84,8 @@ function Register-SPCLicense {
             licenseKey     = $trimmedKey
             tier           = $result.Tier
             email          = $result.Email
+            purchasedAt    = if ($result.PurchasedAt) { $result.PurchasedAt.ToUniversalTime().ToString('o') } else { $now.ToString('o') }
+            registeredTenant = $tenantName
             isTesting      = $result.IsTesting
             registeredAt   = $now.ToString('o')
             lastVerifiedAt = $now.ToString('o')
@@ -98,16 +105,17 @@ function Register-SPCLicense {
         }
 
         $output = [PSCustomObject][ordered]@{
-            Tier           = $result.Tier
-            Email          = $result.Email
-            RegisteredAt   = $now
+            Tier             = $result.Tier
+            Email            = $result.Email
+            RegisteredTenant = $tenantName
+            RegisteredAt     = $now
             LastVerifiedAt = $now
             Status         = 'Active'
             IsTesting      = $result.IsTesting
         }
         $output.PSObject.TypeNames.Insert(0, 'SPC.LicenseInfo')
 
-        Write-Information "SPClean $($result.Tier) license registered. No expiry — renews automatically with Gumroad subscription." -InformationAction Continue
+        Write-Information "SPClean $($result.Tier) license registered. Valid for 1 year from purchase date." -InformationAction Continue
 
         $output
     }

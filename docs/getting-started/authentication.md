@@ -18,7 +18,7 @@ Requires an Entra app registration configured for delegated auth.
         - `https://login.microsoftonline.com/common/oauth2/nativeclient`
     - Enable **Allow public client flows = Yes**
 3. **API permissions** → Add **delegated** permissions:
-    - Microsoft Graph: `User.Read.All`, `Directory.Read.All`
+    - Microsoft Graph: `User.Read.All`, `Directory.Read.All`, `AuditLog.Read.All`
     - SharePoint: `AllSites.FullControl`
 4. **Grant admin consent**
 
@@ -47,7 +47,7 @@ Requires an Entra app registration with a certificate credential.
 1. Go to **Entra Admin Center → App registrations → New registration**
 2. **Certificates & secrets** → upload a `.pfx` or `.cer` certificate
 3. **API permissions** → Add **application** permissions:
-    - Microsoft Graph: `User.Read.All`, `Directory.Read.All`, `Sites.FullControl.All`
+    - Microsoft Graph: `User.Read.All`, `Directory.Read.All`, `AuditLog.Read.All`, `Sites.FullControl.All`
     - SharePoint: `Sites.FullControl.All`
 4. **Grant admin consent**
 
@@ -105,6 +105,7 @@ Clears the module connection state and disconnects both PnP and Microsoft Graph 
 | `Sites.FullControl.All` | Application | Microsoft Graph | Read UIL, remove users |
 | `User.Read.All` | Application | Microsoft Graph | Verify Entra account status |
 | `Directory.Read.All` | Application | Microsoft Graph | Detect soft-deleted accounts |
+| `AuditLog.Read.All` | Application | Microsoft Graph | Read user sign-in activity |
 | `Sites.FullControl.All` | Application | SharePoint | Per-site connections |
 
 ### Interactive (manual)
@@ -114,6 +115,7 @@ Clears the module connection state and disconnects both PnP and Microsoft Graph 
 | `AllSites.FullControl` | Delegated | SharePoint | PnP site connections |
 | `User.Read.All` | Delegated | Microsoft Graph | Verify Entra account status |
 | `Directory.Read.All` | Delegated | Microsoft Graph | Detect soft-deleted accounts |
+| `AuditLog.Read.All` | Delegated | Microsoft Graph | Read user sign-in activity |
 
 All permissions require **admin consent**.
 

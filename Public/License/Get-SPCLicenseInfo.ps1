@@ -26,13 +26,15 @@ function Get-SPCLicenseInfo {
     param()
 
     $makeInfo = {
-        param([string]$Status, [string]$Tier, [string]$Email,
-              $RegisteredAt, $LastVerifiedAt, [bool]$IsTesting)
+        param([string]$Status, [string]$Tier, [string]$Email, [string]$RegisteredTenant,
+              $RegisteredAt, $LastVerifiedAt, $ExpiresAt, [bool]$IsTesting)
         $r = [PSCustomObject][ordered]@{
-            Tier           = $Tier
-            Email          = $Email
-            RegisteredAt   = $RegisteredAt
+            Tier             = $Tier
+            Email            = $Email
+            RegisteredTenant = $RegisteredTenant
+            RegisteredAt     = $RegisteredAt
             LastVerifiedAt = $LastVerifiedAt
+            ExpiresAt      = $ExpiresAt
             Status         = $Status
             IsTesting      = $IsTesting
         }
@@ -56,7 +58,7 @@ function Get-SPCLicenseInfo {
     $diskResult = Get-SPCLicenseDataInternal
 
     if ($diskResult.Status -ne 'Active') {
-        return (& $makeInfo $diskResult.Status $null $null $null $null $false)
+        return (& $makeInfo $diskResult.Status $null $null $null $null $null $null $false)
     }
 
     # Step 3: parse timestamps and build result
@@ -76,9 +78,16 @@ function Get-SPCLicenseInfo {
                 [System.Globalization.CultureInfo]::InvariantCulture,
                 [System.Globalization.DateTimeStyles]::RoundtripKind)
         }
+        if (-not [string]::IsNullOrWhiteSpace($data.purchasedAt)) {
+            $purchasedAt = [datetime]::Parse(
+                $data.purchasedAt,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::RoundtripKind)
+            $expiresAt = $purchasedAt.AddDays(365)
+        }
     } catch {}
 
-    $result = & $makeInfo 'Active' $data.tier $data.email $registeredAt $lastVerifiedAt ($data.isTesting -eq $true)
+    $result = & $makeInfo 'Active' $data.tier $data.email $data.registeredTenant $registeredAt $lastVerifiedAt $expiresAt ($data.isTesting -eq $true)
 
     $script:SPCLicenseCache = $result
     $result

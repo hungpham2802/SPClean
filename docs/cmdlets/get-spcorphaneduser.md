@@ -42,6 +42,7 @@ Get-SPCOrphanedUser
 | `RiskLevel` | `string` | `HIGH`, `MEDIUM`, or `LOW` |
 | `HasDirectPermissions` | `bool` | Whether the user has direct role assignments (not just group membership) |
 | `GroupMemberships` | `string[]` | SharePoint groups the user belongs to |
+| `LastActivityDate` | `DateTime` | Last sign-in activity (Requires `AuditLog.Read.All` and Entra ID P1/P2) |
 | `DetectedAt` | `DateTime` | UTC timestamp of detection |
 
 ## Risk scoring
@@ -100,6 +101,7 @@ Get-SPCOrphanedUser -SiteUrl $url |
 - System accounts (`SHAREPOINT\system`, `NT AUTHORITY\*`, claim type `c:0(.s|true)`) are automatically filtered and never returned.
 - `AllSites` uses `Write-Progress` to display a progress bar across the tenant scan.
 - Detection uses Microsoft Graph batch requests for efficient Entra ID lookups.
+- Retrieving `LastActivityDate` requires the `AuditLog.Read.All` permission and an Entra ID Premium P1/P2 license. If missing, this property will be empty.
 
 ## See also
 

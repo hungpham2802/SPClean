@@ -31,13 +31,20 @@ function Invoke-GumroadVerifyInternal {
     try {
         $response = Invoke-RestMethod -Method POST -Uri $script:GumroadApiUrl `
                         -Body $body -ErrorAction Stop
+
+        $purchasedAt = $null
+        if ($response.purchase.created_at) {
+            $purchasedAt = [datetime]::Parse($response.purchase.created_at)
+        }
+
         return [PSCustomObject]@{
-            Success   = [bool]$response.success
-            Tier      = $Tier
-            Email     = $response.purchase.email
-            Refunded  = ($response.purchase.refunded -eq $true) -or
-                        ($response.purchase.chargebacked -eq $true)
-            IsTesting = ($response.purchase.test -eq $true)
+            Success     = [bool]$response.success
+            Tier        = $Tier
+            Email       = $response.purchase.email
+            PurchasedAt = $purchasedAt
+            Refunded    = ($response.purchase.refunded -eq $true) -or
+                          ($response.purchase.chargebacked -eq $true)
+            IsTesting   = ($response.purchase.test -eq $true)
         }
     }
     catch {
@@ -65,6 +72,7 @@ function Test-SPCLicenseKeyInternal {
             IsValid       = $false
             Tier          = $null
             Email         = $null
+            PurchasedAt   = $null
             IsTesting     = $false
             FailureReason = $Reason
         }
@@ -110,11 +118,20 @@ function Test-SPCLicenseKeyInternal {
         return (& $makeInvalid 'Refunded')
     }
 
-    # 7. Valid
+    # 7. Check expiration (365 days from purchase)
+    if ($result.PurchasedAt) {
+        $ageSincePurchase = ([datetime]::UtcNow - $result.PurchasedAt.ToUniversalTime()).TotalDays
+        if ($ageSincePurchase -gt 365) {
+            return (& $makeInvalid 'Expired')
+        }
+    }
+
+    # 8. Valid
     return [PSCustomObject]@{
         IsValid       = $true
         Tier          = $result.Tier
         Email         = $result.Email
+        PurchasedAt   = $result.PurchasedAt
         IsTesting     = $result.IsTesting
         FailureReason = $null
     }
@@ -157,6 +174,20 @@ function Get-SPCLicenseDataInternal {
 
     $ageDays = ([datetime]::UtcNow - $lastVerified).TotalDays
 
+    # Expiration check based on purchase date (365 days max)
+    if (-not [string]::IsNullOrWhiteSpace($data.purchasedAt)) {
+        try {
+            $purchasedDate = [datetime]::Parse(
+                $data.purchasedAt,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::RoundtripKind)
+            if (([datetime]::UtcNow - $purchasedDate.ToUniversalTime()).TotalDays -gt 365) {
+                Remove-Item $script:LicenseFilePath -Force -ErrorAction SilentlyContinue
+                return [PSCustomObject]@{ Status = 'Expired'; LicData = $null }
+            }
+        } catch {}
+    }
+
     if ($ageDays -lt $script:LicenseCacheMaxAgeDays) {
         return [PSCustomObject]@{ Status = 'Active'; LicData = $data }
     }
@@ -164,6 +195,11 @@ function Get-SPCLicenseDataInternal {
     # Re-verify (cache >= 7 days old)
     try {
         $verify = Invoke-GumroadVerifyInternal -LicenseKey $data.licenseKey -Tier $data.tier -IncrementUses $false
+
+        if (-not $verify.Success) {
+            Remove-Item $script:LicenseFilePath -Force -ErrorAction SilentlyContinue
+            return [PSCustomObject]@{ Status = 'Invalid'; LicData = $null }
+        }
 
         if ($verify.Refunded) {
             Remove-Item $script:LicenseFilePath -Force -ErrorAction SilentlyContinue
@@ -184,7 +220,18 @@ function Get-SPCLicenseDataInternal {
 function Assert-SPCProLicense {
     param([Parameter(Mandatory)] [string]$Feature)
     $info = Get-SPCLicenseInfo
-    if ($info.Status -eq 'Active' -and $info.Tier -in @('PRO', 'CONSULTANT')) { return }
+    if ($info.Status -eq 'Active' -and $info.Tier -in @('PRO', 'CONSULTANT')) {
+        if ($info.Tier -eq 'PRO') {
+            $currentTenant = $script:SPCContext.TenantName
+            if (-not $currentTenant) {
+                throw "ERR-LIC-005: You must connect to a SharePoint tenant using Connect-SPCTenant first."
+            }
+            if ($info.RegisteredTenant -ne $currentTenant) {
+                throw "ERR-LIC-005: This PRO license is registered to '$($info.RegisteredTenant)' and cannot be used on '$currentTenant'. Please upgrade to CONSULTANT for multi-tenant support."
+            }
+        }
+        return
+    }
     throw "ERR-LIC-003: '$Feature' requires a Pro or Consultant license. → Purchase Pro: https://ngochung47.gumroad.com/l/spclean-pro or Consultant: https://ngochung47.gumroad.com/l/spclean-consultant"
 }
 
