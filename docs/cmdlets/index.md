@@ -1,4 +1,4 @@
-# Cmdlet Reference
+﻿# Cmdlet Reference
 
 SPClean exports 9 cmdlets grouped by function.
 
@@ -20,13 +20,13 @@ SPClean exports 9 cmdlets grouped by function.
 
 ```
 Connect-SPCTenant
-       ↓
-Get-SPCOrphanedUser   →   Export-SPCReport
-       ↓
+       â†“
+Get-SPCOrphanedUser   â†’   Export-SPCReport
+       â†“
 Remove-SPCOrphanedUser  (with -CreateSnapshot)
-       ↓
+       â†“
 Restore-SPCOrphanedUser  (if rollback needed)
-       ↓
+       â†“
 Disconnect-SPCTenant
 ```
 
@@ -36,11 +36,11 @@ Disconnect-SPCTenant
 
 | Feature | Free | Pro | Consultant |
 | --- | :---: | :---: | :---: |
-| `Get-SPCOrphanedUser` | ✅ | ✅ | ✅ |
-| `Export-SPCReport -Format CSV\|JSON` | ✅ | ✅ | ✅ |
-| `Export-SPCReport -Format HTML` | — | ✅ | ✅ |
-| `Remove-SPCOrphanedUser -CreateSnapshot` | — | ✅ | ✅ |
-| `Restore-SPCOrphanedUser` | — | ✅ | ✅ |
-| `New-SPCScanSchedule` | — | ✅ | ✅ |
+| `Get-SPCOrphanedUser` | âœ… | âœ… | âœ… |
+| `Export-SPCReport -Format CSV\|JSON` | âœ… | âœ… | âœ… |
+| `Export-SPCReport -Format HTML` | â€” | âœ… | âœ… |
+| `Remove-SPCOrphanedUser -CreateSnapshot` | â€” | âœ… | âœ… |
+| `Restore-SPCOrphanedUser` | â€” | âœ… | âœ… |
+| `New-SPCScanSchedule` | â€” | âœ… | âœ… |
 
 See [Licensing](../licensing.md) for details and pricing.

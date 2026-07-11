@@ -1,6 +1,6 @@
-site_name: SPClean
+﻿site_name: SPClean
 site_description: PowerShell toolkit for SharePoint Online permission hygiene
-site_url: https://hungpham2802.github.io/spclean
+site_url: https://hungpham2802.github.io/SPClean
 repo_url: https://github.com/hungpham2802/spclean
 repo_name: hungpham2802/SPClean
 edit_uri: ""

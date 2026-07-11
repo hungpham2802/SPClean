@@ -120,6 +120,11 @@ function Get-SPCOrphanedUser {
             Write-Verbose 'Get-SPCOrphanedUser: Enumerating all tenant sites...'
             $tenantSites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext -ErrorAction Stop
             foreach ($site in $tenantSites) {
+                if ($site.Template -like 'REDIRECTSITE#*') {
+                    Write-Verbose "Get-SPCOrphanedUser: Skipping redirect site $($site.Url) ($($site.Template))"
+                    continue
+                }
+                
                 $excluded = $false
                 if ($ExcludeSiteUrl) {
                     foreach ($pattern in $ExcludeSiteUrl) {
@@ -154,6 +159,10 @@ function Get-SPCOrphanedUser {
                             -Tenant $tenantId `
                             -CertificatePath $Ctx._CertificatePath `
                             -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
+                    } elseif ($Ctx._CertificateThumbprint) {
+                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
                     } else {
                         $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
                         try {

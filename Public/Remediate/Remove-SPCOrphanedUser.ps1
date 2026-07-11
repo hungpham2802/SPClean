@@ -125,6 +125,10 @@ function Remove-SPCOrphanedUser {
                             -Tenant $tenantId `
                             -CertificatePath $Ctx._CertificatePath `
                             -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
+                    } elseif ($Ctx._CertificateThumbprint) {
+                        Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
                     } else {
                         $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
                         try {

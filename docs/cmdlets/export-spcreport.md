@@ -1,4 +1,4 @@
-# Export-SPCReport
+﻿# Export-SPCReport
 
 Generates a report from orphaned user pipeline input in CSV, HTML, or JSON format.
 
@@ -22,7 +22,7 @@ Export-SPCReport
 
 | Parameter | Type | Required | Description |
 | --- | --- | :---: | --- |
-| `-InputObject` | `SPC.OrphanedUser[]` | ✅ | Accepts pipeline input |
+| `-InputObject` | `SPC.OrphanedUser[]` | âœ… | Accepts pipeline input |
 | `-Format` | `CSV \| HTML \| JSON` | | Output format. Default: `CSV` |
 | `-OutputPath` | `string` | | Full path for the output file. Default: auto-named file in the current directory |
 | `-GroupBy` | `Site \| RiskLevel \| OrphanType` | | Sort/group rows by field. Default: `Site` |
@@ -51,7 +51,7 @@ Export-SPCReport
 
 ### HTML
 
-- Self-contained — all CSS and JavaScript are inlined; no external dependencies
+- Self-contained â€” all CSS and JavaScript are inlined; no external dependencies
 - Colour-coded risk badges: **HIGH** (red), **MEDIUM** (amber), **LOW** (green)
 - Sortable columns via click
 - Optional summary card with totals and breakdown chart when `-IncludeSummary` is used
@@ -63,7 +63,7 @@ Export-SPCReport
 
 ## Notes
 
-- **HTML format is gated** — `Export-SPCReport -Format HTML` requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
+- **HTML format is gated** â€” `Export-SPCReport -Format HTML` requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
 - CSV format is always available with no license requirement.
 - The output file path is returned in `SPC.ReportResult.FilePath` regardless of whether `-OutputPath` was specified, so you can pipe or capture it for further processing.
 

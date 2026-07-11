@@ -1,4 +1,4 @@
-# Connect-SPCTenant
+﻿# Connect-SPCTenant
 
 Establishes a session to SharePoint Online and Microsoft Graph for all SPClean cmdlets.
 
@@ -19,7 +19,7 @@ Connect-SPCTenant
 
 | Parameter | Type | Required | Description |
 | --- | --- | :---: | --- |
-| `-TenantName` | `string` | ✅ | Short name (`contoso`), full domain (`contoso.onmicrosoft.com`), or SharePoint root URL |
+| `-TenantName` | `string` | âœ… | Short name (`contoso`), full domain (`contoso.onmicrosoft.com`), or SharePoint root URL |
 | `-AuthMethod` | `Interactive \| AppOnly` | | Authentication method. Default: `Interactive` |
 | `-ClientId` | `string` | | Entra App Registration client ID. Required for Interactive and AppOnly |
 | `-CertificateThumbprint` | `string` | | Thumbprint of the certificate installed in the local store. AppOnly only |
@@ -36,7 +36,7 @@ Connect-SPCTenant
 | Code | Condition |
 | --- | --- |
 | `ERR-AUTH-001` | Cannot resolve tenant URL from TenantName |
-| `ERR-AUTH-002` | Authentication failed — invalid credentials or insufficient permissions |
+| `ERR-AUTH-002` | Authentication failed â€” invalid credentials or insufficient permissions |
 | `ERR-AUTH-003` | AppOnly auth requires `-ClientId` and one of `-CertificateThumbprint`, `-CertificatePath` or `-ClientSecret` |
 | `ERR-AUTH-004` | Interactive auth requires `-ClientId` in PnP.PowerShell 3.x |
 
@@ -48,7 +48,7 @@ Connect-SPCTenant
     Connect-SPCTenant -TenantName contoso -ClientId '<delegated-app-id>'
     ```
 
-=== "AppOnly — Certificate File"
+=== "AppOnly â€” Certificate File"
 
     ```powershell
     $certPwd = Read-Host -AsSecureString 'Certificate password'
@@ -59,7 +59,7 @@ Connect-SPCTenant
         -CertificatePassword $certPwd
     ```
 
-=== "AppOnly — Certificate Thumbprint"
+=== "AppOnly â€” Certificate Thumbprint"
 
     ```powershell
     Connect-SPCTenant -TenantName contoso `
@@ -68,7 +68,10 @@ Connect-SPCTenant
         -CertificateThumbprint '1234567890ABCDEF'
     ```
 
-=== "AppOnly — Client Secret"
+=== "AppOnly â€” Client Secret"
+
+    !!! warning "Legacy Authentication / Limited Functionality"
+        Connecting with Client Secret uses legacy authentication (ACS-based) and provides limited functionality. It does not work with Microsoft Graph and limits cmdlets related to Microsoft Teams, Planner, Flow, and M365 Groups. It is highly recommended to use Certificate-based authentication or Interactive authentication instead.
 
     ```powershell
     $secret = Read-Host -AsSecureString 'Client secret'

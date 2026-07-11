@@ -1,28 +1,51 @@
-# Authentication
+﻿# Authentication
 
 SPClean supports two authentication methods. You must connect before using any other cmdlet.
 
 ---
 
-## Method A — Interactive (delegated, for manual use)
+## Automated App Registration Setup (Recommended)
+
+If you are a Global Administrator, you can use the included setup script to automatically create an Entra ID Application Registration with all required permissions and certificates. This replaces the manual setup steps in Methods A and B.
+
+```powershell
+# Navigate to the tools directory
+cd .\tools
+
+# Run the setup script (replace 'contoso' with your tenant name)
+.\Setup-SPCleanApp.ps1 -TenantName "contoso"
+```
+
+The script will:
+1. Open a browser for you to sign in.
+2. Create an App Registration named **SPClean App**.
+3. Assign all required Microsoft Graph and SharePoint permissions.
+4. Generate a self-signed certificate and store it in your Windows Certificate Store (`CurrentUser`).
+5. Configure `http://localhost` for Interactive login.
+
+**Important:** After the script completes, you must go to the Entra Admin Center and click **Grant admin consent** for the newly created app!
+
+---
+
+## Method A â€” Interactive (delegated, for manual use)
 
 Requires an Entra app registration configured for delegated auth.
 
 ### One-time app registration setup
 
-1. Go to **Entra Admin Center → App registrations → New registration**
+1. Go to **Entra Admin Center â†’ App registrations â†’ New registration**
 2. **Authentication blade:**
-    - Add platform → **Mobile and desktop applications**
+    - Add platform â†’ **Mobile and desktop applications**
     - Add **both** redirect URIs:
-        - `http://localhost` ← required for browser-based interactive login (PnP opens a random localhost port)
+        - `http://localhost` â† required for browser-based interactive login (PnP opens a random localhost port)
         - `https://login.microsoftonline.com/common/oauth2/nativeclient`
     - Enable **Allow public client flows = Yes**
-3. **API permissions** → Add **delegated** permissions:
+3. **API permissions** â†’ Add **delegated** permissions:
     - Microsoft Graph: `User.Read.All`, `Directory.Read.All`, `AuditLog.Read.All`
     - SharePoint: `AllSites.FullControl`
 4. **Grant admin consent**
 
-!!! warning "Missing `http://localhost` → AADSTS50011"
+!!! warning "Missing `http://localhost` â†’ AADSTS50011"
     PnP PowerShell 3.x interactive auth opens a browser and redirects to `http://localhost:<random-port>`. If `http://localhost` is not listed under Mobile and desktop redirect URIs, Azure AD will reject with **AADSTS50011: redirect URI does not match**. Adding the port-less `http://localhost` covers all ports.
 
 ### Connect
@@ -38,15 +61,15 @@ A browser window opens for sign-in. You must authenticate with an account that h
 
 ---
 
-## Method B — AppOnly / certificate (automation and scheduled tasks)
+## Method B â€” AppOnly / certificate (automation and scheduled tasks)
 
 Requires an Entra app registration with a certificate credential.
 
 ### One-time app registration setup
 
-1. Go to **Entra Admin Center → App registrations → New registration**
-2. **Certificates & secrets** → upload a `.pfx` or `.cer` certificate
-3. **API permissions** → Add **application** permissions:
+1. Go to **Entra Admin Center â†’ App registrations â†’ New registration**
+2. **Certificates & secrets** â†’ upload a `.pfx` or `.cer` certificate
+3. **API permissions** â†’ Add **application** permissions:
     - Microsoft Graph: `User.Read.All`, `Directory.Read.All`, `AuditLog.Read.All`, `Sites.FullControl.All`
     - SharePoint: `Sites.FullControl.All`
 4. **Grant admin consent**
@@ -54,7 +77,7 @@ Requires an Entra app registration with a certificate credential.
 ### Connect
 
 ```powershell
-# Sử dụng file PFX:
+# Sá»­ dá»¥ng file PFX:
 $certPwd = Read-Host -AsSecureString 'Certificate password'
 Connect-SPCTenant -TenantName contoso `
     -AuthMethod AppOnly `
@@ -62,7 +85,7 @@ Connect-SPCTenant -TenantName contoso `
     -CertificatePath C:\certs\spclean.pfx `
     -CertificatePassword $certPwd
 
-# Hoặc sử dụng Thumbprint (chứng chỉ đã được install vào máy):
+# Hoáº·c sá»­ dá»¥ng Thumbprint (chá»©ng chá»‰ Ä‘Ã£ Ä‘Æ°á»£c install vÃ o mÃ¡y):
 Connect-SPCTenant -TenantName contoso `
     -AuthMethod AppOnly `
     -ClientId    '<your-app-client-id>' `
@@ -71,7 +94,7 @@ Connect-SPCTenant -TenantName contoso `
 
 ---
 
-## Method C — AppOnly / client secret
+## Method C â€” AppOnly / client secret
 
 ```powershell
 $secret = Read-Host -AsSecureString 'Client secret'
@@ -81,8 +104,8 @@ Connect-SPCTenant -TenantName contoso `
     -ClientSecret $secret
 ```
 
-!!! warning "Certificate preferred for automation"
-    Client secrets expire and must be rotated manually. Use certificate auth for scheduled tasks.
+!!! warning "Legacy Authentication / Limited Functionality"
+    Connecting with Client Secret uses legacy authentication (ACS-based) and provides limited functionality. It does not work with Microsoft Graph and limits cmdlets related to Microsoft Teams, Planner, Flow, and M365 Groups. It is highly recommended to use Certificate-based authentication or Interactive authentication instead.
 
 ---
 
@@ -123,4 +146,4 @@ All permissions require **admin consent**.
 
 ## Next step
 
-[Quick Start →](quickstart.md){ .md-button .md-button--primary }
+[Quick Start â†’](quickstart.md){ .md-button .md-button--primary }

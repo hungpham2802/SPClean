@@ -1,4 +1,4 @@
-# Quick Start
+﻿# Quick Start
 
 A complete scan-report-remediate workflow in six steps.
 
@@ -13,7 +13,7 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Export-SPCReport -Format HTML -IncludeSummary
 
-# 4. Preview what would be removed (WhatIf — no changes made)
+# 4. Preview what would be removed (WhatIf â€” no changes made)
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Remove-SPCOrphanedUser -WhatIf
 
@@ -59,4 +59,4 @@ Disconnect-SPCTenant
 
 ## Next step
 
-[Explore the Cmdlet Reference →](../cmdlets/index.md){ .md-button .md-button--primary }
+[Explore the Cmdlet Reference â†’](../cmdlets/index.md){ .md-button .md-button--primary }

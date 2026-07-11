@@ -70,10 +70,11 @@ function Restore-SPCOrphanedUser {
         # PS 5.1: ConvertFrom-Json converts empty JSON array [] to $null; @($null) creates a
         # 1-element null array that would count as 1 failed permission. Filter nulls explicitly.
         $permissions = @($snap.permissions | Where-Object { $null -ne $_ })
+        $groupMemberships = if ($null -ne $snap.groupMemberships) { @($snap.groupMemberships | Where-Object { $null -ne $_ }) } else { @() }
 
-        if ($permissions.Count -eq 0) {
+        if ($permissions.Count -eq 0 -and $groupMemberships.Count -eq 0) {
             # Nothing recorded in snapshot → vacuously successful (no permissions to restore)
-            Write-Verbose "Restore-SPCOrphanedUser: Snapshot for '$upn' contains no recorded permissions — reporting Success."
+            Write-Verbose "Restore-SPCOrphanedUser: Snapshot for '$upn' contains no recorded permissions or groups — reporting Success."
             $emptyResult = [PSCustomObject][ordered]@{
                 SiteUrl             = $siteUrl
                 UPN                 = $upn
@@ -89,11 +90,11 @@ function Restore-SPCOrphanedUser {
             return
         }
 
-        Write-Verbose "Restore-SPCOrphanedUser: Snapshot '$resolvedSnap' — $($permissions.Count) permission(s) for $upn at $siteUrl"
+        Write-Verbose "Restore-SPCOrphanedUser: Snapshot '$resolvedSnap' — $($permissions.Count) permission(s) and $($groupMemberships.Count) group(s) for $upn at $siteUrl"
 
         # WhatIf — report intent, emit a result, stop
         if ($WhatIfPreference) {
-            Write-Information "WhatIf: Would restore $($permissions.Count) permission(s) for $displayName ($upn) at site $siteUrl." -InformationAction Continue
+            Write-Information "WhatIf: Would restore $($permissions.Count) permission(s) and $($groupMemberships.Count) group(s) for $displayName ($upn) at site $siteUrl." -InformationAction Continue
             $preview = [PSCustomObject][ordered]@{
                 SiteUrl             = $siteUrl
                 UPN                 = $upn
@@ -127,6 +128,10 @@ function Restore-SPCOrphanedUser {
                             -Tenant $tenantId `
                             -CertificatePath $Ctx._CertificatePath `
                             -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
+                    } elseif ($Ctx._CertificateThumbprint) {
+                        Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
                     } else {
                         $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
                         try {
@@ -205,6 +210,20 @@ function Restore-SPCOrphanedUser {
                 $failedCount++
                 $errMsgs.Add("Permission '$level': $($_.Exception.Message)")
                 Write-Verbose "Restore-SPCOrphanedUser: Failed to restore '$level' for $upn — $_"
+            }
+        }
+
+        foreach ($grp in $groupMemberships) {
+            $grpName = $grp.groupName
+            if ([string]::IsNullOrWhiteSpace($grpName)) { continue }
+            try {
+                Add-PnPGroupMember -LoginName $loginName -Group $grpName -Connection $siteConn -ErrorAction Stop
+                $restoredCount++
+                Write-Verbose "Restore-SPCOrphanedUser: Restored group membership '$grpName' for $upn"
+            } catch {
+                $failedCount++
+                $errMsgs.Add("Group '$grpName': $($_.Exception.Message)")
+                Write-Verbose "Restore-SPCOrphanedUser: Failed to restore group '$grpName' for $upn — $_"
             }
         }
 

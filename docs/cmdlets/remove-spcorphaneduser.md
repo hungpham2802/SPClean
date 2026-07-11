@@ -1,4 +1,4 @@
-# Remove-SPCOrphanedUser
+﻿# Remove-SPCOrphanedUser
 
 Removes orphaned users from SharePoint User Information Lists (UILs) and revokes direct role assignments.
 
@@ -30,7 +30,7 @@ Remove-SPCOrphanedUser
 
 | Parameter | Type | Required | Description |
 | --- | --- | :---: | --- |
-| `-InputObject` | `SPC.OrphanedUser[]` | ✅ | Accepts pipeline input |
+| `-InputObject` | `SPC.OrphanedUser[]` | âœ… | Accepts pipeline input |
 | `-RiskLevel` | `HIGH \| MEDIUM \| LOW` | | Only process orphans at this risk level |
 | `-OrphanType` | `Deleted \| SoftDeleted \| Disabled \| GuestOrphaned` | | Filter by orphan type. Default: `Deleted` only |
 | `-CreateSnapshot` | switch | | Save a JSON permission snapshot before each removal *(Pro/Consultant)* |
@@ -66,7 +66,7 @@ Use `Restore-SPCOrphanedUser` to re-apply permissions from a snapshot.
 
 ## Notes
 
-- **`-CreateSnapshot` is gated** — saving a permission snapshot before removal requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
+- **`-CreateSnapshot` is gated** â€” saving a permission snapshot before removal requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
 - Interactive mode requires Site Collection Administrator (SCA) privileges on target sites to query and remove role assignments. Use `-AddTempSiteCollectionAdmin` to auto-elevate if necessary.
 - `-WhatIf` is always available on all tiers and performs no writes.
 - Always run with `-WhatIf` first when processing a new site to confirm the scope before committing.
@@ -77,7 +77,7 @@ Use `Restore-SPCOrphanedUser` to re-apply permissions from a snapshot.
 === "WhatIf preview"
 
     ```powershell
-    # Preview what would be removed — no changes are made
+    # Preview what would be removed â€” no changes are made
     Get-SPCOrphanedUser -SiteUrl $url | Remove-SPCOrphanedUser -WhatIf
     ```
 
@@ -92,7 +92,7 @@ Use `Restore-SPCOrphanedUser` to re-apply permissions from a snapshot.
 === "Remove all orphan types"
 
     ```powershell
-    # Use with care — also processes SoftDeleted and Disabled accounts
+    # Use with care â€” also processes SoftDeleted and Disabled accounts
     Get-SPCOrphanedUser -SiteUrl $url -IncludeDisabled |
         Remove-SPCOrphanedUser -OrphanType Deleted,SoftDeleted,Disabled -CreateSnapshot -SnapshotPath C:\Snapshots
     ```
