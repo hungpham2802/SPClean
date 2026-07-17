@@ -114,10 +114,17 @@ function Connect-SPCTenant {
                 Write-Verbose "Connecting AppOnly (certificate file) to $adminUrl"
                 # Azure AD requires a valid DNS name; append .onmicrosoft.com when only short name given
                 $tenantId   = if ($shortName -match '\.') { $shortName } else { "$shortName.onmicrosoft.com" }
-                $pnpContext = Connect-PnPOnline -Url $adminUrl -ClientId $ClientId `
-                    -Tenant $tenantId `
-                    -CertificatePath $CertificatePath -CertificatePassword $CertificatePassword `
-                    -ReturnConnection
+                if ($null -ne $CertificatePassword) {
+                    $pnpContext = Connect-PnPOnline -Url $adminUrl -ClientId $ClientId `
+                        -Tenant $tenantId `
+                        -CertificatePath $CertificatePath -CertificatePassword $CertificatePassword `
+                        -ReturnConnection
+                } else {
+                    $pnpContext = Connect-PnPOnline -Url $adminUrl -ClientId $ClientId `
+                        -Tenant $tenantId `
+                        -CertificatePath $CertificatePath `
+                        -ReturnConnection
+                }
 
             } else {
                 Write-Verbose "Connecting AppOnly (client secret) to $adminUrl"

@@ -1,4 +1,4 @@
-﻿# SPClean
+# SPClean
 
 > **PowerShell toolkit for SharePoint Online permission hygiene.**  
 > Find orphaned users, score risk, generate reports, and remove safely — without enterprise-software pricing.
@@ -118,7 +118,7 @@ Verify the import:
 Get-Command -Module SPClean
 ```
 
-Expected output: `Connect-SPCTenant`, `Disconnect-SPCTenant`, `Get-SPCOrphanedUser`, `Export-SPCReport`, `Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`, `Register-SPCLicense`, `Get-SPCLicenseInfo`.
+Expected output: `Connect-SPCTenant`, `Disconnect-SPCTenant`, `Get-SPCOrphanedUser`, `Get-SPCMismatchUser`, `Export-SPCReport`, `Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `Repair-SPCMismatchUser`, `New-SPCScanSchedule`, `Register-SPCLicense`, `Get-SPCLicenseInfo`.
 
 ---
 
@@ -241,7 +241,11 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Where-Object RiskLevel -eq 'HIGH' |
     Remove-SPCOrphanedUser -CreateSnapshot -SnapshotPath C:\Snapshots -Confirm
 
-# 6. Disconnect
+# 6. Detect and Repair User ID Mismatches
+Get-SPCMismatchUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
+    Repair-SPCMismatchUser -Mode CleanAndRestore -Force
+
+# 7. Disconnect
 Disconnect-SPCTenant
 ```
 
@@ -326,6 +330,55 @@ Get-SPCOrphanedUser -AllSites -ExcludeSiteUrl '*-my.sharepoint.com/*'
 
 # All sites, include guests and disabled accounts
 Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled
+```
+
+---
+
+### `Get-SPCMismatchUser`
+
+Scans one or more site collections to identify "User ID Mismatch" issues. This occurs when an Entra ID user is deleted and recreated with the exact same UPN, but SharePoint still caches the old unique object ID, causing "Access Denied".
+
+```
+Get-SPCMismatchUser
+    [-SiteUrl        <string[]>]           # One or more site URLs. Accepts pipeline.
+    [-AllSites]                            # Scan all sites in the tenant.
+    [-ExcludeSiteUrl <string[]>]           # URLs to skip in -AllSites scan.
+    [-ThrottleLimit  <int>]                # Concurrent site connections. Default 3, max 10.
+```
+
+Returns: `SPC.MismatchUser` objects with properties:
+
+| Property | Description |
+| --- | --- |
+| `UPN` | User principal name |
+| `Status` | `Healthy`, `StaleIdentity`, `GuestMismatch`, `Unknown` |
+| `EntraObjectId` | The live Object ID from Entra ID |
+| `SharePointAadObjectId` | The cached Object ID from SharePoint UIL |
+
+---
+
+### `Repair-SPCMismatchUser`
+
+Repairs "User ID Mismatch" issues by safely removing the stale User Information List (UIL) entry and explicitly re-granting the user's Web-level and List-level permissions to the new Entra ID identity.
+
+> `-CreateSnapshot` requires a **Pro or Consultant** license.
+
+```
+Repair-SPCMismatchUser
+    -InputObject  <SPC.MismatchUser[]>                              # Accepts pipeline.
+    [-Mode        ReportOnly|Clean|CleanAndRestore]                 # Default: ReportOnly
+    [-CreateSnapshot]                                               # Save JSON snapshot before removal  [Pro]
+    [-SnapshotPath <string>]                                        # Snapshot directory
+    [-Force]                                                        # Suppress -Confirm prompts
+```
+
+Returns: `SPC.MismatchRepairResult`
+
+**Examples:**
+
+```powershell
+# Auto-detect and repair mismatches across the tenant
+Get-SPCMismatchUser -AllSites | Where-Object Status -eq 'StaleIdentity' | Repair-SPCMismatchUser -Mode CleanAndRestore
 ```
 
 ---
@@ -585,7 +638,7 @@ The HTML is self-contained with inline CSS and JavaScript. Open in a modern brow
 | Module | Status | Description |
 | --- | --- | --- |
 | **Module 1** — Orphaned User Detection | ✅ Available | Find, report, and remove orphaned users across all site collections |
-| **Module 2** — Permissions Cleanup | 🔜 Planned | Over-shared content, broken inheritance, external user audit |
+| **Module 2** — Permissions Cleanup | ✅ Available | User ID Mismatch Remediation: Fix "Access Denied" for recreated users |
 | **Module 3** — Site Lifecycle | 🔜 Planned | Inactive site detection, storage cleanup, archival |
 
 ## Contributing

@@ -23,5 +23,7 @@ Export-ModuleMember -Function (
     'Restore-SPCOrphanedUser',
     'New-SPCScanSchedule',
     'Register-SPCLicense',
-    'Get-SPCLicenseInfo'
+    'Get-SPCLicenseInfo',
+    'Get-SPCMismatchUser',
+    'Repair-SPCMismatchUser'
 )

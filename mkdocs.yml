@@ -1,4 +1,4 @@
-﻿site_name: SPClean
+site_name: SPClean
 site_description: PowerShell toolkit for SharePoint Online permission hygiene
 site_url: https://hungpham2802.github.io/SPClean
 repo_url: https://github.com/hungpham2802/spclean
@@ -67,9 +67,11 @@ nav:
     - Connect-SPCTenant: cmdlets/connect-spctenant.md
     - Disconnect-SPCTenant: cmdlets/disconnect-spctenant.md
     - Get-SPCOrphanedUser: cmdlets/get-spcorphaneduser.md
+    - Get-SPCMismatchUser: cmdlets/get-spcmismatchuser.md
     - Export-SPCReport: cmdlets/export-spcreport.md
     - Remove-SPCOrphanedUser: cmdlets/remove-spcorphaneduser.md
     - Restore-SPCOrphanedUser: cmdlets/restore-spcorphaneduser.md
+    - Repair-SPCMismatchUser: cmdlets/repair-spcmismatchuser.md
     - New-SPCScanSchedule: cmdlets/new-spcscanschedule.md
     - Register-SPCLicense: cmdlets/register-spclicense.md
     - Get-SPCLicenseInfo: cmdlets/get-spclicenseinfo.md

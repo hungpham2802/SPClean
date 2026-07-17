@@ -1,6 +1,6 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '1.2.3'
+    ModuleVersion     = '1.3.0'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'David Pham'          
     CompanyName       = 'M365Automation.com'       
@@ -17,9 +17,11 @@
         'Connect-SPCTenant'
         'Disconnect-SPCTenant'
         'Get-SPCOrphanedUser'
+        'Get-SPCMismatchUser'
         'Export-SPCReport'
         'Remove-SPCOrphanedUser'
         'Restore-SPCOrphanedUser'
+        'Repair-SPCMismatchUser'
         'New-SPCScanSchedule'
         'Register-SPCLicense'
         'Get-SPCLicenseInfo'
@@ -37,7 +39,14 @@
             ProjectUri   = 'https://github.com/hungpham2802/SPClean'
             LicenseUri   = 'https://github.com/hungpham2802/SPClean/blob/main/LICENSE'
             ReleaseNotes = @'
-## 1.1.6 â€” 2026-06-27
+## 1.3.0 - 2026-07-17
+- Feature (Module 2): Added `Get-SPCMismatchUser` to detect User ID Mismatches between SharePoint UIL and Entra ID.
+- Feature (Module 2): Added `Repair-SPCMismatchUser` to automatically backup, clean, and restore Web and List level permissions for mismatched users.
+
+## 1.2.3 - 2026-07-15
+- Fix: Guest users are now correctly skipped during Mismatch Repair.
+
+## 1.1.6 - 2026-06-27
 - Fix: New-SPCScanSchedule scheduled task no longer opens a visible PowerShell window (-WindowStyle Hidden added)
 
 ## 1.1.5 â€” 2026-06-27

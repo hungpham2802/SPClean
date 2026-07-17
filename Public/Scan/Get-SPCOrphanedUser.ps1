@@ -20,7 +20,7 @@ if (Get-Command -Name 'Get-PnPUser' -Module PnP.PowerShell -ErrorAction Silently
     $__pnpGetUser = Get-Command 'Get-PnPUser' -Module PnP.PowerShell
     function Get-PnPUser {
         [CmdletBinding()]
-        param([object]$Connection, [switch]$WithRightsAssigned, [string]$LoginName)
+        param([object]$Connection, [switch]$WithRightsAssigned, [string]$LoginName, [string[]]$Includes)
         $params = @{}; foreach ($k in $PSBoundParameters.Keys) { $params[$k] = $PSBoundParameters[$k] }
         if ($params.ContainsKey('LoginName')) {
             $params['Identity'] = $params['LoginName']
