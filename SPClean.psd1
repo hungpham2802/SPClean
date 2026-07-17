@@ -1,6 +1,6 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '1.2.2'
+    ModuleVersion     = '1.2.3'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'David Pham'          
     CompanyName       = 'M365Automation.com'       

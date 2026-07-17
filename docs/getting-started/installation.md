@@ -69,4 +69,4 @@ Get-SPCLicenseInfo
 
 ## Next step
 
-[Set up authentication â†’](authentication.md){ .md-button .md-button--primary }
+[Set up authentication →](authentication.md){ .md-button .md-button--primary }

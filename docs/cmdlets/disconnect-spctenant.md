@@ -14,7 +14,7 @@ None.
 
 ## Returns
 
-Nothing. This cmdlet never throws â€” it is safe to call even when no connection is active.
+Nothing. This cmdlet never throws — it is safe to call even when no connection is active.
 
 ## Behavior
 

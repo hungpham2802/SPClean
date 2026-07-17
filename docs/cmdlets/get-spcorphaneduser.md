@@ -51,7 +51,7 @@ Get-SPCOrphanedUser
 | --- | --- |
 | **HIGH** | `Deleted` or `GuestOrphaned` with active direct permission assignments |
 | **MEDIUM** | `SoftDeleted` (still accessible until permanently purged) or `Disabled` with direct permissions |
-| **LOW** | `Deleted` with no active permissions â€” UIL entry only |
+| **LOW** | `Deleted` with no active permissions — UIL entry only |
 
 ## Examples
 
@@ -83,12 +83,12 @@ Get-SPCOrphanedUser
 ## Pipeline usage
 
 ```powershell
-# Scan â†’ filter â†’ report
+# Scan → filter → report
 Get-SPCOrphanedUser -AllSites |
     Where-Object RiskLevel -eq 'HIGH' |
     Export-SPCReport -Format HTML -IncludeSummary
 
-# Scan â†’ filter â†’ remove (with WhatIf preview first)
+# Scan → filter → remove (with WhatIf preview first)
 Get-SPCOrphanedUser -SiteUrl $url |
     Where-Object OrphanType -eq 'Deleted' |
     Remove-SPCOrphanedUser -WhatIf

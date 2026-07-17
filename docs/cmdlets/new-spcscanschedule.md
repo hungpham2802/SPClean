@@ -29,8 +29,8 @@ New-SPCScanSchedule
 
 | Parameter | Type | Required | Description |
 | --- | --- | :---: | --- |
-| `-TenantName` | `string` | âœ… | Short tenant name or full domain |
-| `-ClientId` | `string` | âœ… | Entra App Registration client ID (AppOnly) |
+| `-TenantName` | `string` | ✅ | Short tenant name or full domain |
+| `-ClientId` | `string` | ✅ | Entra App Registration client ID (AppOnly) |
 | `-CertificateThumbprint` | `string` | | Thumbprint of the certificate installed in the local store |
 | `-CertificatePath` | `string` | | Path to `.pfx` certificate (required if Thumbprint is not used) |
 | `-CertificatePassword` | `SecureString` | | Password for the `.pfx` file |
@@ -93,4 +93,4 @@ Disconnect-SPCTenant
 
 ## See also
 
-- [Authentication â€” AppOnly / certificate](../getting-started/authentication.md)
+- [Authentication — AppOnly / certificate](../getting-started/authentication.md)

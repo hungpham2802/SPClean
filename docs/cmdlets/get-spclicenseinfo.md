@@ -1,6 +1,6 @@
 ﻿# Get-SPCLicenseInfo
 
-Returns the current SPClean license status from the module cache or disk. Never throws â€” safe to call at any time, including before `Connect-SPCTenant`.
+Returns the current SPClean license status from the module cache or disk. Never throws — safe to call at any time, including before `Connect-SPCTenant`.
 
 ## Synopsis
 

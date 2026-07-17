@@ -19,7 +19,7 @@ Restore-SPCOrphanedUser
 
 | Parameter | Type | Required | Description |
 | --- | --- | :---: | --- |
-| `-SnapshotPath` | `string` | âœ… | Full path to the `.json` snapshot file created by `Remove-SPCOrphanedUser -CreateSnapshot` |
+| `-SnapshotPath` | `string` | ✅ | Full path to the `.json` snapshot file created by `Remove-SPCOrphanedUser -CreateSnapshot` |
 | `-AddTempSiteCollectionAdmin` | switch | | Automatically elevate executor to Site Collection Administrator (Interactive mode only) during execution if access is denied, then revert afterwards. |
 | `-WhatIf` | switch | | Print what would be restored without making any changes |
 | `-Confirm` | switch | | Prompt before applying each permission |
@@ -40,13 +40,13 @@ Restore-SPCOrphanedUser
 
 !!! warning "What restore does NOT do"
     - **Group memberships are not re-applied.** SharePoint group memberships are recorded in the snapshot for reference but are not automatically restored. They must be re-added manually.
-    - **Soft-deleted accounts must be restored in Entra first.** If the user was deleted from Entra ID but is still within the 30-day soft-delete window, restore the account in Entra (`Restore-MgDirectoryDeletedItem`) before running this cmdlet â€” SharePoint cannot grant permissions to a deleted identity even if it still exists in the recycle bin.
+    - **Soft-deleted accounts must be restored in Entra first.** If the user was deleted from Entra ID but is still within the 30-day soft-delete window, restore the account in Entra (`Restore-MgDirectoryDeletedItem`) before running this cmdlet — SharePoint cannot grant permissions to a deleted identity even if it still exists in the recycle bin.
     - **Permanently deleted accounts cannot be restored.** If the user's Entra account was permanently deleted (after the 30-day soft-delete window), SharePoint cannot grant permissions to a non-existent identity. The restore will fail with an identity resolution error.
     - **Only direct role assignments are restored.** Permissions that came from group membership are not affected.
 
 ## Notes
 
-- **This cmdlet is gated** â€” `Restore-SPCOrphanedUser` requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
+- **This cmdlet is gated** — `Restore-SPCOrphanedUser` requires a Pro or Consultant license. Calling it on the Free tier raises `ERR-LIC-003`.
 - The snapshot file must have been created by `Remove-SPCOrphanedUser -CreateSnapshot`. Manually edited or externally generated JSON files are not supported.
 - Interactive mode requires Site Collection Administrator (SCA) privileges on target sites to restore role assignments. Use `-AddTempSiteCollectionAdmin` to auto-elevate if necessary.
 - Use `-WhatIf` first to verify the snapshot content and confirm the target site is reachable before committing.
@@ -56,7 +56,7 @@ Restore-SPCOrphanedUser
 === "Preview restore"
 
     ```powershell
-    # Preview what permissions would be re-applied â€” no changes are made
+    # Preview what permissions would be re-applied — no changes are made
     Restore-SPCOrphanedUser `
         -SnapshotPath C:\Snapshots\user@contoso.com_20260622T120000Z.json `
         -WhatIf

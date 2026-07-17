@@ -1,7 +1,7 @@
 ﻿# SPClean
 
 > **PowerShell toolkit for SharePoint Online permission hygiene.**  
-> Find orphaned users, score risk, generate reports, and remove safely â€” without enterprise-software pricing.
+> Find orphaned users, score risk, generate reports, and remove safely — without enterprise-software pricing.
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?style=flat&logo=powershell&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-SharePoint%20Online-0078D4?style=flat&logo=microsoft-sharepoint&logoColor=white)
@@ -9,13 +9,13 @@
 ![PSGallery Downloads](https://img.shields.io/powershellgallery/dt/SPClean?color=blue&style=flat)
 ![License](https://img.shields.io/badge/License-MIT-6f42c1?style=flat)
 
-ðŸ“– **[Documentation](https://hungpham2802.github.io/SPClean)** Â· ðŸ›’ **[Get a license](https://ngochung47.gumroad.com/)**
+📖 **[Documentation](https://hungpham2802.github.io/SPClean)** · 🛒 **[Get a license](https://ngochung47.gumroad.com/)**
 
 ---
 
 ## Why SPClean
 
-Every SharePoint tenant accumulates **orphaned users** â€” accounts that linger in site permission lists long after the employee left, the contractor finished, or the guest expired. Microsoft has no built-in tool to find and clean them at scale.
+Every SharePoint tenant accumulates **orphaned users** — accounts that linger in site permission lists long after the employee left, the contractor finished, or the guest expired. Microsoft has no built-in tool to find and clean them at scale.
 
 The result: deleted accounts still holding active permissions, compliance reports flagging ghost identities, and hours of manual cleanup per tenant.
 
@@ -26,7 +26,7 @@ SPClean fixes this in minutes:
 Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
 Get-SPCOrphanedUser -AllSites | Export-SPCReport -Format HTML -IncludeSummary
 
-# Preview what would be removed â€” no changes made
+# Preview what would be removed — no changes made
 Get-SPCOrphanedUser -AllSites | Remove-SPCOrphanedUser -WhatIf
 
 # Remove HIGH-risk orphans with a snapshot backup
@@ -45,11 +45,11 @@ SPClean uses a **free + paid tier** model. Core scanning is always free.
 
 | Tier | Price | Features |
 | --- | --- | --- |
-| **Free** | $0 forever | Unlimited site scan Â· CSV export Â· WhatIf dry-run |
-| **Pro** | $79 / tenant / year | HTML report Â· Scheduled scan Â· Snapshot & restore |
-| **Consultant** | $149 / year | Unlimited tenants Â· White-label HTML report Â· Priority support |
+| **Free** | $0 forever | Unlimited site scan · CSV export · WhatIf dry-run |
+| **Pro** | $79 / tenant / year | HTML report · Scheduled scan · Snapshot & restore |
+| **Consultant** | $149 / year | Unlimited tenants · White-label HTML report · Priority support |
 
-**â†’ [Purchase a license at ngochung47.gumroad.com](https://ngochung47.gumroad.com/)**
+**→ [Purchase a license at ngochung47.gumroad.com](https://ngochung47.gumroad.com/)**
 
 After purchasing, activate with one command:
 
@@ -143,18 +143,18 @@ The script configures the App Registration, stores a self-signed certificate on 
 
 ---
 
-### Method A â€” Interactive (delegated, for manual use)
+### Method A — Interactive (delegated, for manual use)
 
 Requires an Entra app registration configured for delegated auth.
 
 **One-time app registration setup:**
 
-1. Go to **Entra Admin Center â†’ App registrations â†’ New registration**
+1. Go to **Entra Admin Center → App registrations → New registration**
 2. **Authentication blade:**
-   - Add platform â†’ Mobile and desktop applications
+   - Add platform → Mobile and desktop applications
    - Redirect URI: `https://login.microsoftonline.com/common/oauth2/nativeclient`
    - Enable **Allow public client flows = Yes**
-3. **API permissions** â†’ Add delegated permissions:
+3. **API permissions** → Add delegated permissions:
    - Microsoft Graph: `User.Read.All`, `Directory.Read.All`
    - SharePoint: `AllSites.FullControl`
 4. **Grant admin consent**
@@ -169,15 +169,15 @@ A browser window opens for sign-in. Use an account with SharePoint Admin or Site
 
 ---
 
-### Method B â€” AppOnly / certificate (for automation and scheduled tasks)
+### Method B — AppOnly / certificate (for automation and scheduled tasks)
 
 Requires an Entra app registration with a certificate credential.
 
 **One-time app registration setup:**
 
-1. Go to **Entra Admin Center â†’ App registrations â†’ New registration**
-2. **Certificates & secrets** â†’ upload a `.pfx` or `.cer` certificate
-3. **API permissions** â†’ Add application permissions:
+1. Go to **Entra Admin Center → App registrations → New registration**
+2. **Certificates & secrets** → upload a `.pfx` or `.cer` certificate
+3. **API permissions** → Add application permissions:
    - Microsoft Graph: `User.Read.All`, `Directory.Read.All`, `Sites.FullControl.All`
    - SharePoint: `Sites.FullControl.All`
 4. **Grant admin consent**
@@ -195,7 +195,7 @@ Connect-SPCTenant -TenantName contoso `
 
 ---
 
-### Method C â€” AppOnly / client secret
+### Method C — AppOnly / client secret
 
 > [!WARNING]
 > **Legacy Authentication / Limited Functionality**
@@ -232,7 +232,7 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Export-SPCReport -Format HTML -IncludeSummary
 
-# 4. Preview what would be removed (WhatIf â€” no changes made)
+# 4. Preview what would be removed (WhatIf — no changes made)
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Remove-SPCOrphanedUser -WhatIf
 
@@ -313,7 +313,7 @@ Returns: `SPC.OrphanedUser` objects with properties:
 | --- | --- |
 | **HIGH** | Deleted or GuestOrphaned with active permission assignments |
 | **MEDIUM** | SoftDeleted (still accessible until purged) or Disabled with direct permissions |
-| **LOW** | Deleted with no active permissions â€” UIL entry only |
+| **LOW** | Deleted with no active permissions — UIL entry only |
 
 **Examples:**
 
@@ -349,7 +349,7 @@ Export-SPCReport
 
 Returns: `SPC.ReportResult`
 
-HTML reports include colour-coded risk badges â€” **HIGH** (red), **MEDIUM** (amber), **LOW** (green) â€” and sortable columns.
+HTML reports include colour-coded risk badges — **HIGH** (red), **MEDIUM** (amber), **LOW** (green) — and sortable columns.
 
 **Examples:**
 
@@ -380,7 +380,7 @@ Remove-SPCOrphanedUser
     [-CreateSnapshot]                                               # Save JSON snapshot before removal  [Pro]
     [-SnapshotPath <string>]                                        # Snapshot directory
     [-Force]                                                        # Suppress -Confirm prompts
-    [-WhatIf]                                                       # Preview only â€” no changes made
+    [-WhatIf]                                                       # Preview only — no changes made
     [-Confirm]                                                      # Prompt before each removal
 ```
 
@@ -543,7 +543,7 @@ Disconnect-SPCTenant
 
 **Limitations:**
 - Restore re-applies direct permission assignments only. SharePoint group memberships are recorded in the snapshot but are not re-applied automatically.
-- If the user's Entra account was permanently deleted, restore will fail â€” SharePoint cannot grant permissions to a non-existent identity.
+- If the user's Entra account was permanently deleted, restore will fail — SharePoint cannot grant permissions to a non-existent identity.
 
 ---
 
@@ -575,7 +575,7 @@ The HTML is self-contained with inline CSS and JavaScript. Open in a modern brow
 - **SecureString parameters** (`-CertificatePassword`, `-ClientSecret`) are never converted to plain text in logs, verbose output, or snapshots.
 - **All write cmdlets** (`Remove-SPCOrphanedUser`, `Restore-SPCOrphanedUser`, `New-SPCScanSchedule`) support `-WhatIf` and `-Confirm`.
 - **No data leaves to third-party servers.** SPClean connects only to `graph.microsoft.com` and your tenant's SharePoint and Entra endpoints.
-- **Snapshots are stored locally.** Snapshot files contain user identity and permission names â€” treat the snapshot directory as sensitive and apply appropriate NTFS ACLs.
+- **Snapshots are stored locally.** Snapshot files contain user identity and permission names — treat the snapshot directory as sensitive and apply appropriate NTFS ACLs.
 - **License keys** are verified online against the Gumroad API and securely cached locally for 7 days to support offline use.
 
 ---
@@ -584,13 +584,13 @@ The HTML is self-contained with inline CSS and JavaScript. Open in a modern brow
 
 | Module | Status | Description |
 | --- | --- | --- |
-| **Module 1** â€” Orphaned User Detection | âœ… Available | Find, report, and remove orphaned users across all site collections |
-| **Module 2** â€” Permissions Cleanup | ðŸ”œ Planned | Over-shared content, broken inheritance, external user audit |
-| **Module 3** â€” Site Lifecycle | ðŸ”œ Planned | Inactive site detection, storage cleanup, archival |
+| **Module 1** — Orphaned User Detection | ✅ Available | Find, report, and remove orphaned users across all site collections |
+| **Module 2** — Permissions Cleanup | 🔜 Planned | Over-shared content, broken inheritance, external user audit |
+| **Module 3** — Site Lifecycle | 🔜 Planned | Inactive site detection, storage cleanup, archival |
 
 ## Contributing
 
-Found a bug or have a feature request? [Open an issue](https://github.com/hungpham2802/SPClean/issues) â€” all feedback welcome.
+Found a bug or have a feature request? [Open an issue](https://github.com/hungpham2802/SPClean/issues) — all feedback welcome.
 
 If you want to contribute code, please open an issue first to discuss the change.
 

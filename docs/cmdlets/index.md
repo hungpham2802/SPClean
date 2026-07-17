@@ -20,13 +20,13 @@ SPClean exports 9 cmdlets grouped by function.
 
 ```
 Connect-SPCTenant
-       â†“
-Get-SPCOrphanedUser   â†’   Export-SPCReport
-       â†“
+       ↓
+Get-SPCOrphanedUser   →   Export-SPCReport
+       ↓
 Remove-SPCOrphanedUser  (with -CreateSnapshot)
-       â†“
+       ↓
 Restore-SPCOrphanedUser  (if rollback needed)
-       â†“
+       ↓
 Disconnect-SPCTenant
 ```
 
@@ -36,11 +36,11 @@ Disconnect-SPCTenant
 
 | Feature | Free | Pro | Consultant |
 | --- | :---: | :---: | :---: |
-| `Get-SPCOrphanedUser` | âœ… | âœ… | âœ… |
-| `Export-SPCReport -Format CSV\|JSON` | âœ… | âœ… | âœ… |
-| `Export-SPCReport -Format HTML` | â€” | âœ… | âœ… |
-| `Remove-SPCOrphanedUser -CreateSnapshot` | â€” | âœ… | âœ… |
-| `Restore-SPCOrphanedUser` | â€” | âœ… | âœ… |
-| `New-SPCScanSchedule` | â€” | âœ… | âœ… |
+| `Get-SPCOrphanedUser` | ✅ | ✅ | ✅ |
+| `Export-SPCReport -Format CSV\|JSON` | ✅ | ✅ | ✅ |
+| `Export-SPCReport -Format HTML` | — | ✅ | ✅ |
+| `Remove-SPCOrphanedUser -CreateSnapshot` | — | ✅ | ✅ |
+| `Restore-SPCOrphanedUser` | — | ✅ | ✅ |
+| `New-SPCScanSchedule` | — | ✅ | ✅ |
 
 See [Licensing](../licensing.md) for details and pricing.
