@@ -65,3 +65,6 @@ Before committing any PowerShell code or proposing a final implementation, you M
 
 ## 6. Safe Testing Rule
 *   **Environment Safety:** DO NOT delete or disable existing active users on the tenant while writing automation or conducting manual tests. ALWAYS create dedicated new test users (e.g. \mismatchtest@...\) dynamically via script for testing purposes, and clean them up afterward.
+
+## 7. Auto-Commit Rule
+*   **Automatic Commits:** After every code update that successfully passes tests (unit/integration), you MUST automatically perform a local git commit for those changes without waiting for explicit user instruction.

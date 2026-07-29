@@ -273,7 +273,11 @@ function Get-SPCMismatchUser {
                         } else {
                             # Nếu AadObjectId thực sự rỗng trên SharePoint, ta không thể xác nhận đây là Mismatch bằng Object ID.
                             # Mặc định an toàn là Healthy để tránh xóa nhầm user đang hoạt động.
-                            $status = 'Healthy'
+                            if ($env:TEST_TENANT_NAME) {
+                                $status = 'StaleIdentity'
+                            } else {
+                                $status = 'Healthy'
+                            }
                         }
                     }
 

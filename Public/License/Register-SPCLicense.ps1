@@ -41,11 +41,6 @@ function Register-SPCLicense {
     )
 
     process {
-        if (-not $script:SPCContext -or -not $script:SPCContext.TenantName) {
-            throw "ERR-LIC-005: You must connect to a SharePoint tenant using Connect-SPCTenant before registering a license."
-        }
-        $tenantName = $script:SPCContext.TenantName
-
         $trimmedKey = $LicenseKey.Trim()
 
         $result = Test-SPCLicenseKeyInternal -LicenseKey $trimmedKey
@@ -55,6 +50,14 @@ function Register-SPCLicense {
                 throw "ERR-LIC-NET-001: Cannot reach Gumroad API to verify license. Check internet connection and try again."
             }
             throw "ERR-LIC-001: Invalid license key: $($result.FailureReason). Verify the key from your Gumroad purchase email."
+        }
+
+        $tenantName = $null
+        if ($result.Tier -eq 'PRO') {
+            if (-not $script:SPCContext -or -not $script:SPCContext.TenantName) {
+                throw "ERR-LIC-005: You must connect to a SharePoint tenant using Connect-SPCTenant before registering a PRO license."
+            }
+            $tenantName = $script:SPCContext.TenantName
         }
 
         $licPath = $script:LicenseFilePath
