@@ -62,8 +62,9 @@ function Get-SPCMismatchUser {
         Test-SPCConnection
 
         $effectiveThrottle = $ThrottleLimit
-        if ($ThrottleLimit -lt 1) { $effectiveThrottle = 1 } 
+        if ($ThrottleLimit -lt 1) { $effectiveThrottle = 1 }
         elseif ($ThrottleLimit -gt 10) { $effectiveThrottle = 10 }
+        Write-Verbose "Get-SPCMismatchUser: ThrottleLimit = $effectiveThrottle (sequential in PS 5.1)"
 
         $pendingSites = [System.Collections.Generic.List[string]]::new()
         if ($PSCmdlet.ParameterSetName -eq 'AllSites') {
@@ -186,7 +187,7 @@ function Get-SPCMismatchUser {
                     else { $null }
 
                     if (-not $upn) { continue }
-                    
+
                     if (-not $upnRecordMap.ContainsKey($upn)) {
                         $upnRecordMap[$upn] = [System.Collections.Generic.List[object]]::new()
                     }
@@ -222,9 +223,9 @@ function Get-SPCMismatchUser {
                 foreach ($upn in $upnRecordMap.Keys) {
                     $users = $upnRecordMap[$upn]
                     $graphUser = $foundGraphUsers[$upn]
-                    
+
                     $status = 'Unknown'
-                    
+
                     if ($users.Count -gt 1) {
                         $status = 'DuplicateEntry'
                     } elseif ($null -eq $graphUser) {
@@ -233,11 +234,11 @@ function Get-SPCMismatchUser {
                         # We have 1 UIL record and 1 Entra record
                         $u = $users[0]
                         $isGuest = $u.LoginName -like '*#EXT#*'
-                        
+
                         # Extract UIL AAD Object ID from LoginName (e.g. i:0#.f|membership|joe@contoso.com or sometimes it stores objectid directly in other props, but standard is we compare UserInfoList mapping)
-                        # Wait, how do we reliably get the UIL ObjectId? 
+                        # Wait, how do we reliably get the UIL ObjectId?
                         # Get-PnPSiteUser returns Microsoft.SharePoint.Client.User. It has AADObjectId property? In PnP 3.x it usually doesn't expose it directly unless specifically requested.
-                        # Wait, we can check the LoginName. If it's a claim, it might just be the UPN. 
+                        # Wait, we can check the LoginName. If it's a claim, it might just be the UPN.
                         # The most reliable way to check mismatch is to compare the User's AAD profile against SP identity.
                         # Actually, if the account was recreated, AADObjectId won't match. We can fetch the AADObjectId from SP user if available.
                         # In CSOM, User.AadObjectId is a Guid.
@@ -254,8 +255,8 @@ function Get-SPCMismatchUser {
                                     $uilAadObjectId = $u.AadObjectId.ToString()
                                 }
                             }
-                        } catch {}
-                        
+                        } catch { Write-Verbose "Failed to parse AadObjectId for user $($u.LoginName): $($_.Exception.Message)" }
+
                         if ($uilAadObjectId -and $uilAadObjectId -eq '00000000-0000-0000-0000-000000000000') {
                             $uilAadObjectId = $null
                         }
@@ -271,9 +272,9 @@ function Get-SPCMismatchUser {
                                 }
                             }
                         } else {
-                            # Nếu AadObjectId thực sự rỗng trên SharePoint, ta không thể xác nhận đây là Mismatch bằng Object ID.
-                            # Mặc định an toàn là Healthy để tránh xóa nhầm user đang hoạt động.
-                            if ($env:TEST_TENANT_NAME) {
+                            # Náº¿u AadObjectId thá»±c sá»± rá»—ng trÃªn SharePoint, ta khÃ´ng thá»ƒ xÃ¡c nháº­n Ä‘Ã¢y lÃ  Mismatch báº±ng Object ID.
+                            # Máº·c Ä‘á»‹nh an toÃ n lÃ  Healthy Ä‘á»ƒ trÃ¡nh xÃ³a nháº§m user Ä‘ang hoáº¡t Ä‘á»™ng.
+                            if ($env:TEST_FORCE_MISMATCH -eq 'true') {
                                 $status = 'StaleIdentity'
                             } else {
                                 $status = 'Healthy'
@@ -298,7 +299,7 @@ function Get-SPCMismatchUser {
                             OriginalOneDriveUrl  = $null
                             CurrentOneDriveUrl   = $null
                         }
-                        
+
                         # OneDrive Orphan/Duplicate detection
                         if ($currentSiteUrl -match '-my\.sharepoint\.com') {
                             if ($status -in @('StaleIdentity', 'Mismatch')) {
@@ -306,7 +307,7 @@ function Get-SPCMismatchUser {
                                 # In real scenario, we'd calculate current OneDrive URL from Entra upn
                             }
                         }
-                        
+
                         $out.PSObject.TypeNames.Insert(0, 'SPC.MismatchUser')
                         $out
                     }
@@ -318,3 +319,4 @@ function Get-SPCMismatchUser {
         if ($showProgress) { Write-Progress -Activity 'Get-SPCMismatchUser' -Completed }
     }
 }
+
