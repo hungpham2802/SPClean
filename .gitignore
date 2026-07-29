@@ -30,7 +30,7 @@ Desktop.ini
 *-Transcript.txt
 
 # Manual testing workspace — local only, may contain real tenant data
-Tests/ManualTest/
+ManualTest/
 Tests/Integration/
 
 # AI Rules / Documentation (Tracked intentionally, except binaries)
@@ -42,3 +42,7 @@ test-mgctx.ps1
 
 # Ignore private docs
 PrivateDocs/
+
+.agents/
+
+test_mismatch.ps1
