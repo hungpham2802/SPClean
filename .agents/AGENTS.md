@@ -68,3 +68,6 @@ Before committing any PowerShell code or proposing a final implementation, you M
 
 ## 7. Auto-Commit Rule
 *   **Automatic Commits:** After every code update that successfully passes tests (unit/integration), you MUST automatically perform a local git commit for those changes without waiting for explicit user instruction.
+
+## 8. Language Rule
+*   **English Comments:** All comments and inline documentation within the core source code folders (Public/ and Private/) MUST always be written in English. Do not use Vietnamese or any other language in the core source code files.
