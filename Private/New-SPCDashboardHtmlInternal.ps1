@@ -95,6 +95,38 @@ function New-SPCDashboardHtmlInternal {
             } else {
                 $guestRows = "<tr><td colspan='3'>No high-risk guests found.</td></tr>"
             }
+
+            # Generate Privileged Users Table Rows
+            $privilegedRows = ""
+            if ($null -ne $PrivilegedUsers -and $PrivilegedUsers.Count -gt 0) {
+                foreach ($p in $PrivilegedUsers) {
+                    $upn = ConvertTo-HtmlEncodedString $p.UPN
+                    $siteCount = [int]$p.SiteCount
+                    $sitesStr = if ($p.Sites -is [array] -or $p.Sites -is [System.Collections.ICollection]) { $p.Sites -join ", " } else { [string]$p.Sites }
+                    $sites = ConvertTo-HtmlEncodedString $sitesStr
+                    $sourcesStr = if ($p.PermissionSources -is [array] -or $p.PermissionSources -is [System.Collections.ICollection]) { $p.PermissionSources -join ", " } else { [string]$p.PermissionSources }
+                    $sources = ConvertTo-HtmlEncodedString $sourcesStr
+                    $privilegedRows += "<tr><td>$upn</td><td>$siteCount</td><td>$sites</td><td>$sources</td></tr>"
+                }
+            } else {
+                $privilegedRows = "<tr><td colspan='4'>No privileged users found.</td></tr>"
+            }
+
+            # Generate Over-Permissioned Users Table Rows
+            $overPermissionedRows = ""
+            if ($null -ne $OverPermissionedUsers -and $OverPermissionedUsers.Count -gt 0) {
+                foreach ($op in $OverPermissionedUsers) {
+                    $upn = ConvertTo-HtmlEncodedString $op.UPN
+                    $fc = [int]$op.FullControlCount
+                    $edit = [int]$op.EditCount
+                    $read = [int]$op.ReadCount
+                    $eas = [int]$op.EAS
+                    $badge = if ($op.IsRedAlert) { "<span style='color:#dc3545; font-weight:bold;'>RED ALERT</span>" } else { "<span style='color:#28a745;'>Normal</span>" }
+                    $overPermissionedRows += "<tr><td>$upn</td><td>$fc</td><td>$edit</td><td>$read</td><td>$eas</td><td>$badge</td></tr>"
+                }
+            } else {
+                $overPermissionedRows = "<tr><td colspan='6'>No over-permissioned users found.</td></tr>"
+            }
             
             # Health Score Logic
             $score = 100
@@ -203,6 +235,30 @@ function New-SPCDashboardHtmlInternal {
                     </thead>
                     <tbody>
                         $guestRows
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="data-table-wrap">
+                <h3>Top Privileged Users</h3>
+                <table>
+                    <thead>
+                        <tr><th>UPN</th><th>Site Count</th><th>Sites</th><th>Permission Sources</th></tr>
+                    </thead>
+                    <tbody>
+                        $privilegedRows
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="data-table-wrap">
+                <h3>Over-Permissioned Users (EAS)</h3>
+                <table>
+                    <thead>
+                        <tr><th>UPN</th><th>Full Control Count</th><th>Edit Count</th><th>Read Count</th><th>EAS Score</th><th>Red Alert Badge</th></tr>
+                    </thead>
+                    <tbody>
+                        $overPermissionedRows
                     </tbody>
                 </table>
             </div>

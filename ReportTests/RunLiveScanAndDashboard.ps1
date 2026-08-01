@@ -36,82 +36,54 @@ try {
 
     Write-Host "Running Get-SPCPrivilegedUser scan..."
     "Scanning privileged users..." | Out-File -FilePath $logFile -Append
-    $privileged = @(Get-SPCPrivilegedUser -ErrorAction SilentlyContinue)
+    $privileged = @(Get-SPCPrivilegedUser -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $TenantName -ErrorAction SilentlyContinue)
     "Privileged users found: $($privileged.Count)" | Out-File -FilePath $logFile -Append
+
+    Write-Host "Running Get-SPCOverPermissionedUser scan..."
+    "Scanning over-permissioned users..." | Out-File -FilePath $logFile -Append
+    $overPermissioned = @(Get-SPCOverPermissionedUser -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $TenantName -ErrorAction SilentlyContinue)
+    "Over-permissioned users found: $($overPermissioned.Count)" | Out-File -FilePath $logFile -Append
 
     Write-Host "Running Get-SPCMismatchUser scan..."
     "Scanning mismatch users..." | Out-File -FilePath $logFile -Append
     $mismatches = @(Get-SPCMismatchUser -AllSites -ErrorAction SilentlyContinue)
     "Mismatches found: $($mismatches.Count)" | Out-File -FilePath $logFile -Append
 
-    # Pipe genuine live scan results directly to Export-SPCReport without any synthetic fallbacks
-    $reportItems = [System.Collections.Generic.List[PSCustomObject]]::new()
+    # Calculate summary metrics
+    $totalOrphaned = $orphans.Count
+    $totalGuests = $guests.Count
+    $highRiskOrphans = ($orphans | Where-Object { $_.RiskLevel -eq 'HIGH' }).Count
+    $highRiskGuests = ($guests | Where-Object { $_.RiskLevel -eq 'HIGH' }).Count
+    $highRiskUsers = $highRiskOrphans + $highRiskGuests
+    $topHighRiskGuestsList = @($guests | Where-Object { $_.RiskLevel -eq 'HIGH' })
 
-    foreach ($o in $orphans) {
-        $reportItems.Add($o)
-    }
+    $allUpns = @()
+    if ($orphans) { $allUpns += $orphans.UPN }
+    if ($guests) { $allUpns += $guests.GuestEmail }
+    if ($privileged) { $allUpns += $privileged.UPN }
+    if ($overPermissioned) { $allUpns += $overPermissioned.UPN }
+    if ($mismatches) { $allUpns += $mismatches.UPN }
 
-    # Map genuine guest records if not already in orphans list
-    foreach ($g in $guests) {
-        $alreadyInList = $reportItems | Where-Object { $_.UPN -eq $g.GuestEmail -or $_.Email -eq $g.GuestEmail }
-        if (-not $alreadyInList) {
-            $reportItems.Add([PSCustomObject][ordered]@{
-                SiteUrl              = "https://icclabvn.sharepoint.com"
-                SiteTitle            = "icclabvn SharePoint"
-                UserId               = 0
-                LoginName            = "i:0#.f|membership|$($g.GuestEmail)"
-                DisplayName          = $g.GuestEmail
-                Email                = $g.GuestEmail
-                UPN                  = $g.GuestEmail
-                OrphanType           = "GuestOrphaned"
-                RiskLevel            = $g.RiskLevel
-                HasDirectPermissions = ($g.PermissionLevel -ne 'Read')
-                GroupMemberships     = @("Guest Access")
-                LastActivityDate     = if ($g.LastAccess -ne 'N/A') { $g.LastAccess } else { $null }
-                DetectedAt           = (Get-Date).ToUniversalTime()
-            })
-        }
-    }
+    $totalUsers = ($allUpns | Where-Object { -not [string]::IsNullOrEmpty($_) } | Select-Object -Unique).Count
 
-    # Map genuine mismatch records if any
-    foreach ($m in $mismatches) {
-        if ($m.Status -ne 'Healthy') {
-            $alreadyInList = $reportItems | Where-Object { $_.SiteUrl -eq $m.SiteUrl -and $_.UPN -eq $m.UPN }
-            if (-not $alreadyInList) {
-                $reportItems.Add([PSCustomObject][ordered]@{
-                    SiteUrl              = $m.SiteUrl
-                    SiteTitle            = $m.SiteTitle
-                    UserId               = $m.UserId
-                    LoginName            = $m.LoginName
-                    DisplayName          = $m.DisplayName
-                    Email                = $m.Email
-                    UPN                  = $m.UPN
-                    OrphanType           = $m.Status
-                    RiskLevel            = if ($m.Status -eq 'GuestMismatch') { 'HIGH' } else { 'MEDIUM' }
-                    HasDirectPermissions = $false
-                    GroupMemberships     = @()
-                    LastActivityDate     = $null
-                    DetectedAt           = $m.DetectedAt
-                })
-            }
-        }
-    }
-
-    $reportInput = @($reportItems)
-
-    Write-Host "Generating HTML Dashboard at $OutputPath with $($reportInput.Count) genuine live scan records..."
-    "Generating HTML report for $($reportInput.Count) records..." | Out-File -FilePath $logFile -Append
+    Write-Host "Generating HTML Dashboard at $OutputPath via New-SPCDashboardHtmlInternal..."
+    "Generating HTML dashboard via New-SPCDashboardHtmlInternal..." | Out-File -FilePath $logFile -Append
 
     if (Test-Path $OutputPath) { Remove-Item $OutputPath -Force }
 
-    if ($reportInput.Count -gt 0) {
-        $reportResult = $reportInput | Export-SPCReport -Format HTML -IncludeSummary -Path $OutputPath
-        "HTML report generated at $($reportResult.FilePath). Total reported: $($reportResult.TotalOrphansReported)" | Out-File -FilePath $logFile -Append
-    } else {
-        "No risk records found during live scan." | Out-File -FilePath $logFile -Append
-    }
+    New-SPCDashboardHtmlInternal `
+        -OutputPath $OutputPath `
+        -TotalUsers $totalUsers `
+        -TotalGuests $totalGuests `
+        -TotalOrphaned $totalOrphaned `
+        -HighRiskUsers $highRiskUsers `
+        -OrphanedUsersList $orphans `
+        -TopHighRiskGuestsList $topHighRiskGuestsList `
+        -PrivilegedUsers $privileged `
+        -OverPermissionedUsers $overPermissioned
 
-    Write-Host "Scan completed successfully!"
+    "Dashboard HTML generated successfully at $OutputPath" | Out-File -FilePath $logFile -Append
+    Write-Host "Scan and Dashboard generation completed successfully!"
 } catch {
     "ERROR during live scan: $_" | Out-File -FilePath $logFile -Append
     throw $_
