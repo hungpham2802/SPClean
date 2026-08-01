@@ -217,7 +217,7 @@ function Get-SPCOrphanedUser {
             try {
                 $siteConn = & $connectToSite -SiteUrl $currentSiteUrl -Ctx $ctx
             } catch {
-                Write-Error "Get-SPCOrphanedUser: Cannot connect to '$currentSiteUrl'. $_"
+                Write-Error "[ERR-GOU-001] $(Get-Date -Format 'o'): Cannot connect to site collection '$currentSiteUrl'. Resource: $currentSiteUrl. Details: $_" -ErrorAction Continue
                 continue
             }
 
@@ -231,7 +231,7 @@ function Get-SPCOrphanedUser {
                     if ($_.Exception.Message -match "401" -or $_.Exception.Message -match "403" -or $_.Exception.Message -match "Access denied" -or $_.Exception.Message -match "Unauthorized") {
                         if ($AddTempSiteCollectionAdmin) {
                             if ($ctx.AuthMethod -ne 'Interactive') {
-                                Write-Warning "Get-SPCOrphanedUser: Access Denied on $currentSiteUrl. -AddTempSiteCollectionAdmin is only supported for Interactive auth. Skipping site."
+                                Write-Error "[ERR-GOU-002] $(Get-Date -Format 'o'): Access Denied on '$currentSiteUrl'. -AddTempSiteCollectionAdmin is only supported for Interactive auth. Resource: $currentSiteUrl." -ErrorAction Continue
                                 continue
                             }
                             Write-Verbose "Get-SPCOrphanedUser: Access Denied. Attempting to add temporary Site Collection Admin rights."
@@ -246,15 +246,15 @@ function Get-SPCOrphanedUser {
                                 $siteConn = & $connectToSite -SiteUrl $currentSiteUrl -Ctx $ctx
                                 $uilUsers = Get-PnPSiteUser -Connection $siteConn -ErrorAction Stop
                             } catch {
-                                Write-Warning "Get-SPCOrphanedUser: Failed to add temporary SCA or retry on $currentSiteUrl. Skipping. Error: $_"
+                                Write-Error "[ERR-GOU-003] $(Get-Date -Format 'o'): Failed to add temporary SCA or retry on '$currentSiteUrl'. Resource: $currentSiteUrl. Details: $_" -ErrorAction Continue
                                 continue
                             }
                         } else {
-                            Write-Warning "Get-SPCOrphanedUser: Access Denied on $currentSiteUrl. You must be a Site Collection Administrator or use -AddTempSiteCollectionAdmin to scan."
+                            Write-Error "[ERR-GOU-004] $(Get-Date -Format 'o'): Access Denied on '$currentSiteUrl'. You must be a Site Collection Administrator or use -AddTempSiteCollectionAdmin to scan. Resource: $currentSiteUrl." -ErrorAction Continue
                             continue
                         }
                     } else {
-                        Write-Error "Get-SPCOrphanedUser: Error getting users for $currentSiteUrl. $_"
+                        Write-Error "[ERR-GOU-005] $(Get-Date -Format 'o'): Error getting users for site collection '$currentSiteUrl'. Resource: $currentSiteUrl. Details: $_" -ErrorAction Continue
                         continue
                     }
                 }

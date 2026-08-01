@@ -34,7 +34,7 @@ Describe 'Get-SPCMismatchUser' {
     }
 
     Context 'Mismatch Classification' {
-        It 'Correctly classifies Healthy, StaleIdentity, GuestMismatch, DuplicateEntry, and Mismatch' {
+        It 'Correctly classifies Healthy, StaleIdentity, GuestMismatch, DuplicateEntry, and safe default Healthy when UIL ObjectId is empty' {
             Mock Get-PnPSiteUser { return $script:FakeUILUsers }
             Mock Invoke-SPCGraphBatch {
                 return @(
@@ -62,7 +62,7 @@ Describe 'Get-SPCMismatchUser' {
             $dup | Should -HaveCount 2
 
             $nomap = $result | Where-Object UPN -eq 'nomap@contoso.com'
-            $nomap.Status | Should -Be 'Mismatch'
+            $nomap.Status | Should -Be 'Healthy'
         }
     }
 }

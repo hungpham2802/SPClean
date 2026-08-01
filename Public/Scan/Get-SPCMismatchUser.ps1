@@ -274,11 +274,7 @@ function Get-SPCMismatchUser {
                         } else {
                             # If AadObjectId is truly empty on SharePoint, we cannot confirm it's a Mismatch using Object ID.
                             # Default safely to Healthy to avoid accidentally removing active users.
-                            if ($env:TEST_FORCE_MISMATCH -eq 'true') {
-                                $status = 'StaleIdentity'
-                            } else {
-                                $status = 'Healthy'
-                            }
+                            $status = 'Healthy'
                         }
                     }
 

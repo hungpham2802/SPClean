@@ -1,0 +1,85 @@
+**********************
+PowerShell transcript start
+Start time: 20260801162500
+Username: DESKTOP-LASHID2\hungpham
+RunAs User: DESKTOP-LASHID2\hungpham
+Configuration Name: 
+Machine: DESKTOP-LASHID2 (Microsoft Windows NT 10.0.22621.0)
+Host Application: C:\Program Files (x86)\PowerShell\7\pwsh.dll -File C:\Users\hungpham.DESKTOP-LASHID2\.gemini\antigravity\brain\d39b4e0a-77a3-4d29-aa2d-3f5f55fbd789\scratch\IntegrationTest.ps1
+Process ID: 23344
+PSVersion: 7.6.3
+PSEdition: Core
+GitCommitId: 7.6.3
+OS: Microsoft Windows 10.0.22621
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+Transcript started, output file is d:\Project\SPClean\ReportTests\IntegrationTest_Log_20260801_162500.txt
+Connecting to PnP...
+Connecting to Graph...
+Welcome to Microsoft Graph!
+
+Connected via apponly access using eecf892a-44c3-48fe-aa2f-b9e332dda328
+Readme: https://aka.ms/graph/sdk/powershell
+SDK Docs: https://aka.ms/graph/sdk/powershell/docs
+API Docs: https://aka.ms/graph/docs
+
+NOTE: You can use the -NoWelcome parameter to suppress this message.
+NOTE: Sign in by Web Account Manager (WAM) is enabled by default on Windows systems and cannot be disabled when using the default ClientId.
+To disable WAM run Set-MgGraphOption -DisableLoginByWAM $true and then use a custom ClientId.
+Loading modules...
+--- Testing Get-SPCGuestAccess ---
+VERBOSE: No SiteUrl provided. Fetching all sites in the tenant...
+VERBOSE: Cmdlet execution started for                 $sites = Get-PnPTenantSite | Select-Object -ExpandProperty Url
+VERBOSE: Already connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com/'
+VERBOSE: Cmdlet execution done for                 $sites = Get-PnPTenantSite | Select-Object -ExpandProperty Url
+VERBOSE: Cmdlet execution started for                 $accessToken = Get-PnPAccessToken -ErrorAction SilentlyContinue
+VERBOSE: Cmdlet execution done for                 $accessToken = Get-PnPAccessToken -ErrorAction SilentlyContinue
+VERBOSE: Connecting to https://icclabvn-my.sharepoint.com/
+VERBOSE: Cmdlet execution started for                         Connect-PnPOnline -Url $site -AccessToken $accessToken -ErrorAction Stop
+VERBOSE: PnP PowerShell Cmdlets (3.2.0)
+VERBOSE: Connecting using a provided Access Token
+VERBOSE: Connected
+VERBOSE: Cmdlet execution done for                         Connect-PnPOnline -Url $site -AccessToken $accessToken -ErrorAction Stop
+VERBOSE: Retrieving users for https://icclabvn-my.sharepoint.com/
+PS>TerminatingError(Get-SPCGuestAccess): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: Failed to process site https://icclabvn-my.sharepoint.com/ : The term 'Get-PnPSiteUser' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again."
+PS>TerminatingError(): "ERR-GUA-500: An unexpected error occurred while processing guests. Resource: Tenant. Time: 2026-08-01T16:25:04.7317235+07:00. Details: Failed to process site https://icclabvn-my.sharepoint.com/ : The term 'Get-PnPSiteUser' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again."
+ERROR Get-SPCGuestAccess: ERR-GUA-500: An unexpected error occurred while processing guests. Resource: Tenant. Time: 2026-08-01T16:25:04.7317235+07:00. Details: Failed to process site https://icclabvn-my.sharepoint.com/ : The term 'Get-PnPSiteUser' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+--- Testing Get-SPCPrivilegedUser ---
+VERBOSE: Validating connection...
+VERBOSE: Cmdlet execution started for         $currentConn = Get-PnPConnection -ErrorAction SilentlyContinue
+VERBOSE: Cmdlet execution done for         $currentConn = Get-PnPConnection -ErrorAction SilentlyContinue
+VERBOSE: Fetching all tenant sites...
+VERBOSE: Cmdlet execution started for                 $sitesToScan = Get-PnPTenantSite | Select-Object -ExpandProperty Url
+VERBOSE: Connecting to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet
+>> TerminatingError(Get-PnPTenantSite): "Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized"."
+PS>TerminatingError(Get-SPCPrivilegedUser): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: [ERR-AUTH-001] 2026-08-01 16:25:04Z: Terminating error occurred. Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized"."
+>> TerminatingError(Get-SPCPrivilegedUser): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: [ERR-AUTH-001] 2026-08-01 16:25:04Z: Terminating error occurred. Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized"."
+ERROR Get-SPCPrivilegedUser: [ERR-AUTH-001] 2026-08-01 16:25:04Z: Terminating error occurred. Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized".
+--- Testing Get-SPCOverPermissionedUser ---
+VERBOSE: Validating connection...
+VERBOSE: Cmdlet execution started for         $currentConn = Get-PnPConnection -ErrorAction SilentlyContinue
+VERBOSE: Cmdlet execution done for         $currentConn = Get-PnPConnection -ErrorAction SilentlyContinue
+VERBOSE: Fetching all tenant sites...
+VERBOSE: Cmdlet execution started for                 $sitesToScan = Get-PnPTenantSite | Select-Object -ExpandProperty Url
+VERBOSE: Connecting to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet
+>> TerminatingError(Get-PnPTenantSite): "Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized"."
+PS>TerminatingError(Get-SPCOverPermissionedUser): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: [ERR-AUTH-001] 2026-08-01 16:25:04Z: Terminating error occurred. Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized"."
+>> TerminatingError(Get-SPCOverPermissionedUser): "The running command stopped because the preference variable "ErrorActionPreference" or common parameter is set to Stop: [ERR-AUTH-001] 2026-08-01 16:25:04Z: Terminating error occurred. Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized"."
+ERROR Get-SPCOverPermissionedUser: [ERR-AUTH-001] 2026-08-01 16:25:04Z: Terminating error occurred. Unable to connect to the SharePoint Online Admin Center at 'https://icclabvn-admin.sharepoint.com' to run this cmdlet. If this URL is incorrect for your tenant, you can pass in the correct Admin Center URL using Connect-PnPOnline -TenantAdminUrl. If you are using Privileged Identity Management (PIM) on your tenant, please ensure you have activated at least the SharePoint Administrator role and allowed some time for it to activate. Error message: Unexpected response from the server. The content type of the response is "". The status code is "Unauthorized".
+--- Testing New-SPCDashboardHtmlInternal ---
+VERBOSE: Starting Dashboard HTML Generation...
+Dashboard generated successfully at: d:\Project\SPClean\ReportTests\TestDashboard.html
+Completed New-SPCDashboardHtmlInternal.
+Dashboard generated at d:\Project\SPClean\ReportTests\TestDashboard.html
+--- INTEGRATION TEST COMPLETE ---
+**********************
+PowerShell transcript end
+End time: 20260801162504
+**********************

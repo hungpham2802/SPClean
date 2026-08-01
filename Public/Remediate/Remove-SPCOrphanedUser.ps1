@@ -351,7 +351,7 @@ function Remove-SPCOrphanedUser {
 
         # SRS step 6: summary to information stream (suppressed in WhatIf — nothing was executed)
         if (-not $WhatIfPreference) {
-            Write-Host "Removed $removedCount orphaned users across $($siteSet.Count) sites. Skipped $errorCount due to errors (see error stream)."
+            Write-Information "Removed $removedCount orphaned users across $($siteSet.Count) sites. Skipped $errorCount due to errors (see error stream)." -InformationAction Continue
         }
     }
 }

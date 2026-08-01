@@ -95,7 +95,7 @@ function Connect-SPCTenant {
         try {
             if ($AuthMethod -eq 'Interactive') {
                 Write-Verbose "Connecting interactively to $adminUrl"
-                Write-Host "SPClean requires 2 separate logins for Interactive mode. Please complete BOTH browser prompts (1 for SharePoint, 1 for Microsoft Graph)." -ForegroundColor Cyan
+                Write-Information "SPClean requires 2 separate logins for Interactive mode. Please complete BOTH browser prompts (1 for SharePoint, 1 for Microsoft Graph)." -InformationAction Continue
                 $pnpContext = Connect-PnPOnline -Url $adminUrl -Interactive -ClientId $ClientId -ReturnConnection
                 
                 # Connect-MgGraph for Graph cmdlets (SRS 3.1.1 step 2)

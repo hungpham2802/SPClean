@@ -1,0 +1,27 @@
+{
+  "tenantName": "icclabvn.onmicrosoft.com",
+  "azureAppId": "eecf892a-44c3-48fe-aa2f-b9e332dda328",
+  "certificateThumbprint": "FCC7E9F8AB71338B51E2DF77F17B903C2342C53A",
+  "scanTimestamp": "2026-08-01T10:22:00Z",
+  "dashboardPath": "D:\\Project\\SPClean\\ReportTests\\TestDashboard.html",
+  "metrics": {
+    "totalUsers": 14,
+    "guestUsers": 5,
+    "orphanedUsers": 6,
+    "highRiskUsers": 3,
+    "mediumRiskUsers": 2,
+    "lowRiskUsers": 1,
+    "sitesScanned": 3
+  },
+  "refactoredCmdlets": [
+    "Private/Invoke-SPCGraphBatch.ps1",
+    "Public/Get-SPCGuestAccess.ps1",
+    "Public/Get-SPCPrivilegedUser.ps1",
+    "Public/Get-SPCOverPermissionedUser.ps1",
+    "Public/Scan/Get-SPCOrphanedUser.ps1",
+    "Public/Remediate/Remove-SPCOrphanedUser.ps1",
+    "Public/Auth/Connect-SPCTenant.ps1"
+  ],
+  "unitTestStatus": "PASSED",
+  "securityGuardrailAC12": "VERIFIED (Zero credential leak in streams)"
+}
