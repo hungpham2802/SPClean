@@ -70,8 +70,10 @@ function New-SPCDashboardHtmlInternal {
             $orphanedRows = ""
             if ($null -ne $OrphanedUsersList -and $OrphanedUsersList.Count -gt 0) {
                 foreach ($u in $OrphanedUsersList) {
-                    $displayName = ConvertTo-HtmlEncodedString $u.DisplayName
-                    $upn = ConvertTo-HtmlEncodedString $u.UPN
+                    $dName = if (-not [string]::IsNullOrWhiteSpace($u.DisplayName)) { $u.DisplayName } else { $u.UPN }
+                    $uName = if (-not [string]::IsNullOrWhiteSpace($u.UPN)) { $u.UPN } else { $u.Email }
+                    $displayName = ConvertTo-HtmlEncodedString $dName
+                    $upn = ConvertTo-HtmlEncodedString $uName
                     $risk = ConvertTo-HtmlEncodedString $u.RiskLevel
                     $color = Get-RiskColor $risk
                     $orphanedRows += "<tr><td>$displayName</td><td>$upn</td><td style='color:$color; font-weight:bold;'>$risk</td></tr>"
@@ -84,8 +86,8 @@ function New-SPCDashboardHtmlInternal {
             $guestRows = ""
             if ($null -ne $TopHighRiskGuestsList -and $TopHighRiskGuestsList.Count -gt 0) {
                 foreach ($g in $TopHighRiskGuestsList) {
-                    $dName = if ($null -ne $g.DisplayName) { $g.DisplayName } else { "Guest User" }
-                    $uName = if ($null -ne $g.UPN) { $g.UPN } elseif ($null -ne $g.GuestEmail) { $g.GuestEmail } else { "" }
+                    $dName = if (-not [string]::IsNullOrWhiteSpace($g.DisplayName)) { $g.DisplayName } else { "Guest User" }
+                    $uName = if (-not [string]::IsNullOrWhiteSpace($g.UPN)) { $g.UPN } elseif (-not [string]::IsNullOrWhiteSpace($g.GuestEmail)) { $g.GuestEmail } else { "" }
                     $displayName = ConvertTo-HtmlEncodedString $dName
                     $upn = ConvertTo-HtmlEncodedString $uName
                     $risk = ConvertTo-HtmlEncodedString $g.RiskLevel
@@ -151,16 +153,17 @@ function New-SPCDashboardHtmlInternal {
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline';">
     <title>SPClean - Permission Health Dashboard v1.5</title>
     <style>
+        * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1200px; margin: auto; }
         h1 { text-align: center; color: #2c3e50; }
         
         .kpi-container { display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; }
-        .kpi-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 22%; text-align: center; margin-bottom: 10px; }
+        .kpi-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 22%; text-align: center; margin-bottom: 10px; box-sizing: border-box; }
         .kpi-card h3 { margin: 0 0 10px 0; font-size: 1.2em; color: #7f8c8d; }
         .kpi-card .value { font-size: 2em; font-weight: bold; color: #2980b9; }
 
-        .score-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; }
+        .score-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; box-sizing: border-box; }
         .score-circle { 
             width: 150px; height: 150px; border-radius: 50%; 
             background: conic-gradient($scoreColor $($score)%, #e0e0e0 0); 
@@ -170,9 +173,9 @@ function New-SPCDashboardHtmlInternal {
         .score-inner { width: 120px; height: 120px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
 
         .tables-container { display: flex; justify-content: space-between; flex-wrap: wrap; }
-        .data-table-wrap { width: 48%; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .data-table-wrap { width: 48%; min-width: 0; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; box-sizing: border-box; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; word-break: break-word; overflow-wrap: break-word; }
         th { background-color: #f8f9fa; color: #495057; }
         
         @media (max-width: 768px) {

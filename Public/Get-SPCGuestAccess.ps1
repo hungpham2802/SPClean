@@ -90,6 +90,7 @@ function Get-SPCGuestAccess {
 
                     if (-not $guestDict.ContainsKey($upn)) {
                         $guestDict[$upn] = @{
+                            DisplayName = if (-not [string]::IsNullOrEmpty($user.Title)) { $user.Title } else { "Guest User" }
                             Email = if ([string]::IsNullOrEmpty($user.Email)) { $upn } else { $user.Email }
                             UPN = $upn
                             InvitedBy = "Unknown"
@@ -150,6 +151,7 @@ function Get-SPCGuestAccess {
             if ($totalGuests -gt 0) {
                 Write-Verbose "Found $totalGuests unique guests. Querying Microsoft Graph for sign-in activity..."
                 
+                $graphToken = Get-PnPAccessToken -ResourceTypeName "MicrosoftGraph" -ErrorAction SilentlyContinue
                 $batchSize = 20
                 $abortGraphQueries = $false
 
@@ -175,11 +177,11 @@ function Get-SPCGuestAccess {
                                 $batchRequests.Add(@{
                                     id = $upn
                                     method = "GET"
-                                    url = "/users?`$filter=userPrincipalName eq '$encodedUpn'&`$select=userPrincipalName,signInActivity,createdDateTime"
+                                    url = "/users?`$filter=userPrincipalName eq '$encodedUpn'&`$select=displayName,givenName,surname,userPrincipalName,signInActivity,createdDateTime"
                                 })
                             }
 
-                            $batchResult = Invoke-SPCGraphBatch -Requests $batchRequests -ErrorAction Stop
+                            $batchResult = Invoke-SPCGraphBatch -Requests $batchRequests -AccessToken $graphToken -ErrorAction Stop
                             $success = $true
                             
                             if ($batchResult) {
@@ -188,6 +190,11 @@ function Get-SPCGuestAccess {
                                     if ($res.status -eq 200 -and $null -ne $res.body -and $null -ne $res.body.value -and $res.body.value.Count -gt 0) {
                                         $userObj = $res.body.value[0]
                                         if ($guestDict.ContainsKey($upn)) {
+                                            if (-not [string]::IsNullOrWhiteSpace($userObj.displayName)) {
+                                                $guestDict[$upn].DisplayName = $userObj.displayName
+                                            } elseif (-not [string]::IsNullOrWhiteSpace($userObj.givenName) -or -not [string]::IsNullOrWhiteSpace($userObj.surname)) {
+                                                $guestDict[$upn].DisplayName = ("$($userObj.givenName) $($userObj.surname)").Trim()
+                                            }
                                             if ($null -ne $userObj.signInActivity -and -not [string]::IsNullOrEmpty($userObj.signInActivity.lastSignInDateTime)) {
                                                 $guestDict[$upn].LastAccess = $userObj.signInActivity.lastSignInDateTime
                                             }
@@ -224,8 +231,8 @@ function Get-SPCGuestAccess {
 
                 if ($guestInfo.LastAccess -ne "N/A") {
                     try {
-                        $lastAccessDate = [datetime]$guestInfo.LastAccess
-                        $inactiveDays = ((Get-Date) - $lastAccessDate).Days
+                        $lastAccessDate = ([datetime]$guestInfo.LastAccess).ToUniversalTime()
+                        $inactiveDays = ([DateTime]::UtcNow - $lastAccessDate).Days
                         if ($inactiveDays -gt 180) {
                             $isInactiveOver180Days = $true
                             $isInactiveOverThreshold = $true
@@ -252,6 +259,8 @@ function Get-SPCGuestAccess {
                 }
 
                 $outputObj = [PSCustomObject]@{
+                    DisplayName     = if (-not [string]::IsNullOrWhiteSpace($guestInfo.DisplayName)) { $guestInfo.DisplayName } else { "Guest User" }
+                    UPN             = if (-not [string]::IsNullOrWhiteSpace($guestInfo.UPN)) { $guestInfo.UPN } else { $upn }
                     GuestEmail      = $guestInfo.Email
                     InvitedBy       = $guestInfo.InvitedBy
                     LastAccess      = $guestInfo.LastAccess

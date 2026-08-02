@@ -311,7 +311,7 @@ function Get-SPCOrphanedUser {
                     $batchRequests.Add(@{
                         id     = "$reqId"
                         method = 'GET'
-                        url    = "/users/$([uri]::EscapeDataString($upn))?`$select=id,displayName,accountEnabled,userPrincipalName"
+                        url    = "/users/$([uri]::EscapeDataString($upn))?`$select=id,displayName,givenName,surname,accountEnabled,userPrincipalName"
                     })
                     $reqId++
                 }
@@ -333,6 +333,7 @@ function Get-SPCOrphanedUser {
 
                 # SRS step 10: SoftDeleted lookup (requires Directory.Read.All)
                 $softDeletedUpns = @{}
+                $softDeletedObjects = @{}
                 if ($notFoundItems.Count -gt 0) {
                     Write-Verbose "Get-SPCOrphanedUser: Checking deleted items for $($notFoundItems.Count) missing users"
                     $delRequests = [System.Collections.Generic.List[hashtable]]::new()
@@ -344,7 +345,7 @@ function Get-SPCOrphanedUser {
                             $delRequests.Add(@{
                                 id     = "del_$delId"
                                 method = 'GET'
-                                url    = "/directory/deletedItems/microsoft.graph.user?`$filter=userPrincipalName eq '$($item.UPN)'&`$select=id,userPrincipalName"
+                                url    = "/directory/deletedItems/microsoft.graph.user?`$filter=userPrincipalName eq '$($item.UPN)'&`$select=id,userPrincipalName,displayName,givenName,surname"
                             })
                             $delId++
                         }
@@ -352,8 +353,12 @@ function Get-SPCOrphanedUser {
                     $delResponses = Invoke-SPCGraphBatch -Requests $delRequests -AccessToken $graphToken
                     foreach ($resp in $delResponses) {
                         if ($resp.status -eq 200 -and $resp.body.value -and $resp.body.value.Count -gt 0) {
-                            $foundDelUpn = $resp.body.value[0].userPrincipalName
-                            if ($foundDelUpn) { $softDeletedUpns[$foundDelUpn] = $true }
+                            $delItem = $resp.body.value[0]
+                            $foundDelUpn = $delItem.userPrincipalName
+                            if ($foundDelUpn) {
+                                $softDeletedUpns[$foundDelUpn] = $true
+                                $softDeletedObjects[$foundDelUpn] = $delItem
+                            }
                         }
                     }
                 }
@@ -430,12 +435,32 @@ function Get-SPCOrphanedUser {
                         -HasDirectPermissions $hasDirectPerms `
                         -GroupMembershipCount $userGroups.Count
 
+                    $targetGraphUser = if ($null -ne $graphUser) {
+                        $graphUser
+                    } elseif ($null -ne $softDeletedObjects -and $softDeletedObjects.ContainsKey($upn)) {
+                        $softDeletedObjects[$upn]
+                    } else {
+                        $null
+                    }
+
+                    $displayName = $null
+                    if ($null -ne $targetGraphUser) {
+                        if (-not [string]::IsNullOrWhiteSpace($targetGraphUser.displayName)) {
+                            $displayName = $targetGraphUser.displayName
+                        } elseif (-not [string]::IsNullOrWhiteSpace($targetGraphUser.givenName) -or -not [string]::IsNullOrWhiteSpace($targetGraphUser.surname)) {
+                            $displayName = ("$($targetGraphUser.givenName) $($targetGraphUser.surname)").Trim()
+                        }
+                    }
+                    if ([string]::IsNullOrWhiteSpace($displayName)) {
+                        $displayName = $user.Title
+                    }
+
                     $out = [PSCustomObject][ordered]@{
                         SiteUrl              = $currentSiteUrl
                         SiteTitle            = $siteTitle
                         UserId               = $user.Id
                         LoginName            = $user.LoginName
-                        DisplayName          = $user.Title
+                        DisplayName          = $displayName
                         Email                = $user.Email
                         UPN                  = $upn
                         OrphanType           = $orphanType
