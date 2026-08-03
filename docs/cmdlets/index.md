@@ -1,4 +1,4 @@
-﻿# Cmdlet Reference
+# Cmdlet Reference
 
 SPClean exports 9 cmdlets grouped by function.
 
@@ -7,6 +7,11 @@ SPClean exports 9 cmdlets grouped by function.
 | [Connect-SPCTenant](connect-spctenant.md) | Auth | Establish a SharePoint Online + Graph session |
 | [Disconnect-SPCTenant](disconnect-spctenant.md) | Auth | Clear the module connection state |
 | [Get-SPCOrphanedUser](get-spcorphaneduser.md) | Read | Scan sites and return orphaned user objects |
+| [Get-SPCPrivilegedUser](get-spcprivilegeduser.md) | Read | Get the top privileged users across the tenant |
+| [Get-SPCOverPermissionedUser](get-spcoverpermissioneduser.md) | Read | Identify users with excessive direct permission assignments |
+| [Get-SPCGuestAccess](get-spcguestaccess.md) | Read | List all external/guest users with access to a site |
+| [Get-SPCMismatchUser](get-spcmismatchuser.md) | Read | Scan sites to identify User ID Mismatch issues |
+| [Repair-SPCMismatchUser](repair-spcmismatchuser.md) | Write | Repair User ID Mismatch issues |
 | [Export-SPCReport](export-spcreport.md) | Report | Generate CSV, HTML, or JSON reports from scan results |
 | [Remove-SPCOrphanedUser](remove-spcorphaneduser.md) | Write | Remove orphaned users from UILs and revoke direct permissions |
 | [Restore-SPCOrphanedUser](restore-spcorphaneduser.md) | Write | Re-apply permissions from a JSON snapshot |

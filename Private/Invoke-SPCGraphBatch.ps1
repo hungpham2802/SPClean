@@ -109,7 +109,7 @@ function Invoke-SPCGraphBatch {
                             # Extract Retry-After header if present in sub-response headers
                             $retryAfterSec = 0
                             if ($r.headers) {
-                                if ($r.headers is [hashtable] -or $r.headers is [System.Collections.IDictionary]) {
+                                if ($r.headers -is [hashtable] -or $r.headers -is [System.Collections.IDictionary]) {
                                     if ($r.headers.ContainsKey('Retry-After')) { [int]::TryParse([string]$r.headers['Retry-After'], [ref]$retryAfterSec) | Out-Null }
                                     elseif ($r.headers.ContainsKey('retry-after')) { [int]::TryParse([string]$r.headers['retry-after'], [ref]$retryAfterSec) | Out-Null }
                                 } else {

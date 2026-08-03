@@ -31,11 +31,37 @@ function Get-SPCGuestAccess {
         $clientId = $null
         $tenantId = $null
         $thumbprint = $null
-        $currentConn = Get-PnPConnection -ErrorAction SilentlyContinue
-        if ($currentConn) {
-            $clientId = $currentConn.ClientId
-            $tenantId = $currentConn.Tenant
-            $thumbprint = $currentConn.Certificate.Thumbprint
+        $connectToSite = {
+            param([string] $SiteUrl, [PSCustomObject] $Ctx)
+            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
+            switch ($Ctx.AuthMethod) {
+                'Interactive' {
+                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
+                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
+                }
+                'AppOnly' {
+                    if ($Ctx._CertificatePath) {
+                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -CertificatePath $Ctx._CertificatePath `
+                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
+                    } elseif ($Ctx._CertificateThumbprint) {
+                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
+                    } else {
+                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
+                        try {
+                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+                            Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                                -ClientSecret $plain -ReturnConnection
+                        } finally {
+                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+                            $plain = $null
+                        }
+                    }
+                }
+            }
         }
 
         $highCount = 0
@@ -48,7 +74,7 @@ function Get-SPCGuestAccess {
             $sites = @()
             if ([string]::IsNullOrEmpty($SiteUrl)) {
                 Write-Verbose "No SiteUrl provided. Fetching all sites in the tenant..."
-                $sites = Get-PnPTenantSite | Select-Object -ExpandProperty Url
+                $sites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext | Select-Object -ExpandProperty Url
             } else {
                 $sites = @($SiteUrl)
             }
@@ -63,7 +89,7 @@ function Get-SPCGuestAccess {
                 
                 try {
                     Write-Verbose "Connecting to $site"
-                    $siteConnection = Connect-PnPOnline -Url $site -ClientId $clientId -Thumbprint $thumbprint -Tenant $tenantId -ReturnConnection -ErrorAction Stop
+                    $siteConnection = & $connectToSite -SiteUrl $site -Ctx $script:SPCContext
                     
                     Write-Verbose "Retrieving users for $site"
                     $users = Get-PnPUser -Connection $siteConnection -ErrorAction Stop | Where-Object {
@@ -78,7 +104,7 @@ function Get-SPCGuestAccess {
                 catch {
                     $errCode = "ERR-GUA-003"
                     $timestamp = (Get-Date -Format 'o')
-                    Write-Error "[$errCode] $timestamp: Failed to process site collection '$site'. Resource: $site. Details: $($_.Exception.Message)" -ErrorAction Continue
+                    Write-Error "[$errCode] ${timestamp}: Failed to process site collection '$site'. Resource: $site. Details: $($_.Exception.Message)" -ErrorAction Continue
                     continue
                 }
 
@@ -151,7 +177,7 @@ function Get-SPCGuestAccess {
             if ($totalGuests -gt 0) {
                 Write-Verbose "Found $totalGuests unique guests. Querying Microsoft Graph for sign-in activity..."
                 
-                $graphToken = Get-PnPAccessToken -ResourceTypeName "MicrosoftGraph" -ErrorAction SilentlyContinue
+                $graphToken = if ($script:SPCContext) { $script:SPCContext.GraphAccessToken } else { Get-PnPAccessToken -ResourceTypeName "Graph" -ErrorAction SilentlyContinue }
                 $batchSize = 20
                 $abortGraphQueries = $false
 

@@ -25,5 +25,8 @@ Export-ModuleMember -Function (
     'Register-SPCLicense',
     'Get-SPCLicenseInfo',
     'Get-SPCMismatchUser',
-    'Repair-SPCMismatchUser'
+    'Repair-SPCMismatchUser',
+    'Get-SPCGuestAccess',
+    'Get-SPCPrivilegedUser',
+    'Get-SPCOverPermissionedUser'
 )

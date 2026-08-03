@@ -264,6 +264,7 @@ function Get-SPCOrphanedUser {
                 # Note: i:0#.f|membership| is ALWAYS a real Entra user claim — never filter by empty
                 # email for this claim type. Entra-deleted users lose their email in the SP UIL.
                 $filteredUsers = $uilUsers | Where-Object {
+                    if ($_.PrincipalType -ne 'User' -and $_.PrincipalType -ne 'Guest') { return $false }
                     $ln = $_.LoginName
                     $isSystem = $false
                     foreach ($p in $systemPatterns) {
@@ -375,7 +376,7 @@ function Get-SPCOrphanedUser {
                         $siRequests.Add(@{
                             id     = "$siId"
                             method = 'GET'
-                            url    = "/users/$userId/signInActivity"
+                            url    = "/users/$userId?`$select=signInActivity"
                         })
                         $siId++
                     }
@@ -389,8 +390,8 @@ function Get-SPCOrphanedUser {
                         if ($resp.status -eq 403 -and -not $warnedSignIn) {
                             Write-Warning "SPClean: Unable to retrieve signInActivity. Missing 'AuditLog.Read.All' permission or Entra ID P1/P2 license. LastActivityDate will be empty."
                             $warnedSignIn = $true
-                        } elseif ($origId -and $resp.status -eq 200 -and $resp.body.lastSignInDateTime) {
-                            $signInMap[$origId] = [datetime]$resp.body.lastSignInDateTime
+                        } elseif ($origId -and $resp.status -eq 200 -and $resp.body.signInActivity -and $resp.body.signInActivity.lastSignInDateTime) {
+                            $signInMap[$origId] = [datetime]$resp.body.signInActivity.lastSignInDateTime
                         }
                     }
                 }

@@ -34,14 +34,39 @@ function Get-SPCOverPermissionedUser {
         if (Get-Command Test-SPCConnection -ErrorAction SilentlyContinue) {
             Test-SPCConnection
         }
-        $tempResults = [System.Collections.Generic.List[PSCustomObject]]::new()
-        
-        $currentConn = Get-PnPConnection -ErrorAction SilentlyContinue
-        if ($currentConn) {
-            if (-not $ClientId -and $currentConn.ClientId) { $ClientId = $currentConn.ClientId }
-            if (-not $Tenant -and $currentConn.Tenant) { $Tenant = $currentConn.Tenant }
-            if (-not $Thumbprint -and $currentConn.Certificate) { $Thumbprint = $currentConn.Certificate.Thumbprint }
+        $connectToSite = {
+            param([string] $SiteUrl, [PSCustomObject] $Ctx)
+            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
+            switch ($Ctx.AuthMethod) {
+                'Interactive' {
+                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
+                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
+                }
+                'AppOnly' {
+                    if ($Ctx._CertificatePath) {
+                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -CertificatePath $Ctx._CertificatePath `
+                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
+                    } elseif ($Ctx._CertificateThumbprint) {
+                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
+                    } else {
+                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
+                        try {
+                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+                            Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                                -ClientSecret $plain -ReturnConnection
+                        } finally {
+                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+                            $plain = $null
+                        }
+                    }
+                }
+            }
         }
+        $tempResults = [System.Collections.Generic.List[PSCustomObject]]::new()
     }
 
     process {
@@ -51,7 +76,7 @@ function Get-SPCOverPermissionedUser {
                 $sitesToScan += $SiteUrl
             } else {
                 Write-Verbose "Fetching all tenant sites..."
-                $sitesToScan = Get-PnPTenantSite | Select-Object -ExpandProperty Url
+                $sitesToScan = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext | Select-Object -ExpandProperty Url
             }
 
             $totalSites = $sitesToScan.Count
@@ -69,11 +94,7 @@ function Get-SPCOverPermissionedUser {
                     
                     while (-not $success -and $retryCount -lt $maxRetries) {
                         try {
-                            if ($ClientId -and $Thumbprint -and $Tenant) {
-                                $siteConnection = Connect-PnPOnline -Url $url -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $Tenant -ReturnConnection -ErrorAction Stop
-                            } else {
-                                $siteConnection = Connect-PnPOnline -Url $url -Interactive:$false -ReturnConnection -ErrorAction Stop
-                            }
+                            $siteConnection = & $connectToSite -SiteUrl $url -Ctx $script:SPCContext
                             
                             $roleAssignments = (Invoke-PnPSPRestMethod -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -Connection $siteConnection -ErrorAction SilentlyContinue).value
                             foreach ($ra in $roleAssignments) {

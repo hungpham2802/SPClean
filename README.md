@@ -46,8 +46,8 @@ SPClean uses a **free + paid tier** model. Core scanning is always free.
 | Tier | Price | Features |
 | --- | --- | --- |
 | **Free** | $0 forever | Unlimited site scan · CSV export · WhatIf dry-run |
-| **Pro** | $79 / tenant / year | HTML report · Scheduled scan · Snapshot & restore |
-| **Consultant** | $149 / year | Unlimited tenants · White-label HTML report · Priority support |
+| **Pro** | $199 / tenant / year | HTML report · Scheduled scan · Snapshot & restore |
+| **Consultant** | $399 / year | Unlimited tenants · White-label HTML report · Priority support |
 
 **→ [Purchase a license at ngochung47.gumroad.com](https://ngochung47.gumroad.com/)**
 
@@ -245,7 +245,12 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
 Get-SPCMismatchUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Repair-SPCMismatchUser -Mode CleanAndRestore -Force
 
-# 7. Disconnect
+# 7. Audit specific access scenarios
+Get-SPCPrivilegedUser -ClientId '<app-id>' -Thumbprint '<cert>' -Tenant 'contoso.onmicrosoft.com'
+Get-SPCOverPermissionedUser -ClientId '<app-id>' -Thumbprint '<cert>' -Tenant 'contoso.onmicrosoft.com'
+Get-SPCGuestAccess -SiteUrl 'https://contoso.sharepoint.com/sites/Ext'
+
+# 8. Disconnect
 Disconnect-SPCTenant
 ```
 
@@ -414,6 +419,36 @@ Get-SPCOrphanedUser -AllSites |
 # CSV grouped by risk level (free)
 Get-SPCOrphanedUser -SiteUrl $url |
     Export-SPCReport -Format CSV -GroupBy RiskLevel -OutputPath C:\reports\orphans.csv
+```
+
+---
+
+### `Get-SPCPrivilegedUser`
+
+Scans all site collections to identify users who are Site Collection Administrators, members of the default Owners group, or have direct 'Full Control' assignments. It aggregates this data by UserPrincipalName and returns the top 20 users with the most privileged access.
+
+```powershell
+Get-SPCPrivilegedUser -ClientId "app-id" -Thumbprint "cert-thumb" -Tenant "tenant.onmicrosoft.com"
+```
+
+---
+
+### `Get-SPCOverPermissionedUser`
+
+Scans all site collections to identify users who have a high number of direct permission assignments (breaking role inheritance) rather than being properly managed via SharePoint groups. Returns the top 20 users with the highest count of direct permissions.
+
+```powershell
+Get-SPCOverPermissionedUser -ClientId "app-id" -Thumbprint "cert-thumb" -Tenant "tenant.onmicrosoft.com"
+```
+
+---
+
+### `Get-SPCGuestAccess`
+
+Scans a specific site collection to list all external/guest users (with #EXT# in their UPN) who have access to the site, either through direct assignments or group memberships.
+
+```powershell
+Get-SPCGuestAccess -SiteUrl "https://contoso.sharepoint.com/sites/Ext"
 ```
 
 ---

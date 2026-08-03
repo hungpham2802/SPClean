@@ -1,4 +1,4 @@
-﻿# Licensing
+# Licensing
 
 SPClean uses a **key-based license** verified entirely offline — no internet check, no phone-home.
 
@@ -6,7 +6,7 @@ SPClean uses a **key-based license** verified entirely offline — no internet c
 
 | Feature | Free | Pro | Consultant |
 | --- | :---: | :---: | :---: |
-| **Price** | $0 forever | **$79 / tenant / year** | **$149 / year** |
+| **Price** | $0 forever | **$199 / tenant / year** | **$399 / year** |
 | Orphan detection (`Get-SPCOrphanedUser`) | ✅ | ✅ | ✅ |
 | CSV and JSON reports | ✅ | ✅ | ✅ |
 | Unlimited sites per scan | ✅ | ✅ | ✅ |

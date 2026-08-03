@@ -35,12 +35,37 @@ function Get-SPCPrivilegedUser {
         }
         $tempResults = [System.Collections.Generic.List[PSCustomObject]]::new()
         
-        # Try to extract current connection details if parameters are not provided
-        $currentConn = Get-PnPConnection -ErrorAction SilentlyContinue
-        if ($currentConn) {
-            if (-not $ClientId -and $currentConn.ClientId) { $ClientId = $currentConn.ClientId }
-            if (-not $Tenant -and $currentConn.Tenant) { $Tenant = $currentConn.Tenant }
-            if (-not $Thumbprint -and $currentConn.Certificate) { $Thumbprint = $currentConn.Certificate.Thumbprint }
+        $connectToSite = {
+            param([string] $SiteUrl, [PSCustomObject] $Ctx)
+            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
+            switch ($Ctx.AuthMethod) {
+                'Interactive' {
+                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
+                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
+                }
+                'AppOnly' {
+                    if ($Ctx._CertificatePath) {
+                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -CertificatePath $Ctx._CertificatePath `
+                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
+                    } elseif ($Ctx._CertificateThumbprint) {
+                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                            -Tenant $tenantId `
+                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
+                    } else {
+                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
+                        try {
+                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+                            Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
+                                -ClientSecret $plain -ReturnConnection
+                        } finally {
+                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+                            $plain = $null
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -51,8 +76,7 @@ function Get-SPCPrivilegedUser {
                 $sitesToScan += $SiteUrl
             } else {
                 Write-Verbose "Fetching all tenant sites..."
-                # Use Select-Object to only load URLs into memory to avoid OOM for large tenants
-                $sitesToScan = Get-PnPTenantSite | Select-Object -ExpandProperty Url
+                $sitesToScan = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext | Select-Object -ExpandProperty Url
             }
 
             $totalSites = $sitesToScan.Count
@@ -70,12 +94,7 @@ function Get-SPCPrivilegedUser {
                     
                     while (-not $success -and $retryCount -lt $maxRetries) {
                         try {
-                            if ($ClientId -and $Thumbprint -and $Tenant) {
-                                $siteConnection = Connect-PnPOnline -Url $url -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $Tenant -ReturnConnection -ErrorAction Stop
-                            } else {
-                                # Fallback to clone current context or interactive if context allows
-                                $siteConnection = Connect-PnPOnline -Url $url -Interactive:$false -ReturnConnection -ErrorAction Stop
-                            }
+                            $siteConnection = & $connectToSite -SiteUrl $url -Ctx $script:SPCContext
                             
                             # 1. SCAs - Use Get-PnPSiteCollectionAdmin to avoid large list thresholds
                             $scas = Get-PnPSiteCollectionAdmin -Connection $siteConnection -ErrorAction SilentlyContinue
@@ -93,7 +112,7 @@ function Get-SPCPrivilegedUser {
                             # 2. Owners Group
                             $ownersGroup = Get-PnPGroup -AssociatedOwnerGroup -Connection $siteConnection -ErrorAction SilentlyContinue
                             if ($ownersGroup) {
-                                $ownerMembers = Get-PnPGroupMember -Identity $ownersGroup.Title -Connection $siteConnection -ErrorAction SilentlyContinue
+                                $ownerMembers = Get-PnPGroupMember -Group $ownersGroup.Title -Connection $siteConnection -ErrorAction SilentlyContinue
                                 foreach ($member in $ownerMembers) {
                                     if (-not [string]::IsNullOrEmpty($member.LoginName) -and $member.LoginName -match "\|membership\|") {
                                         $upn = $member.LoginName.Split("|")[-1]

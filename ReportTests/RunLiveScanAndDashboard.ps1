@@ -28,6 +28,19 @@ try {
     "Scanning orphaned users..." | Out-File -FilePath $logFile -Append
     $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled -ErrorAction SilentlyContinue)
     "Orphans found: $($orphans.Count)" | Out-File -FilePath $logFile -Append
+    
+    if ($orphans) {
+        $csvPath = "D:\Project\SPClean\ReportTests\OrphanedUsersReport_v2.csv"
+        $exportData = $orphans | ForEach-Object {
+            $row = $_ | Select-Object *
+            if ($row.GroupMemberships -is [array]) {
+                $row.GroupMemberships = $row.GroupMemberships -join ', '
+            }
+            $row
+        }
+        $exportData | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
+        Write-Host "Exported orphaned users to $csvPath"
+    }
 
     Write-Host "Running Get-SPCGuestAccess scan..."
     "Scanning guest access..." | Out-File -FilePath $logFile -Append
@@ -71,6 +84,7 @@ try {
 
     if (Test-Path $OutputPath) { Remove-Item $OutputPath -Force }
 
+    . "D:\Project\SPClean\Private\New-SPCDashboardHtmlInternal.ps1"
     New-SPCDashboardHtmlInternal `
         -OutputPath $OutputPath `
         -TotalUsers $totalUsers `

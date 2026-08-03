@@ -25,6 +25,9 @@
         'New-SPCScanSchedule'
         'Register-SPCLicense'
         'Get-SPCLicenseInfo'
+        'Get-SPCGuestAccess'
+        'Get-SPCPrivilegedUser'
+        'Get-SPCOverPermissionedUser'
     )
 
     CmdletsToExport   = @()

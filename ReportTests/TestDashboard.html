@@ -3,37 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline';">
     <title>SPClean - Permission Health Dashboard v1.5</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1200px; margin: auto; }
-        h1 { text-align: center; color: #2c3e50; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
         
         .kpi-container { display: flex; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; }
         .kpi-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 22%; text-align: center; margin-bottom: 10px; box-sizing: border-box; }
         .kpi-card h3 { margin: 0 0 10px 0; font-size: 1.2em; color: #7f8c8d; }
         .kpi-card .value { font-size: 2em; font-weight: bold; color: #2980b9; }
 
-        .score-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; box-sizing: border-box; }
+        .score-card { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px; box-sizing: border-box; position: relative; }
         .score-circle { 
             width: 150px; height: 150px; border-radius: 50%; 
-            background: conic-gradient(#28a745 88%, #e0e0e0 0); 
+            background: conic-gradient(#ffc107 60%, #e0e0e0 0); 
             display: flex; align-items: center; justify-content: center; 
             margin: auto; font-size: 2em; font-weight: bold; color: #333;
         }
         .score-inner { width: 120px; height: 120px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
 
-        .tables-container { display: flex; justify-content: space-between; flex-wrap: wrap; }
-        .data-table-wrap { width: 48%; min-width: 0; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; box-sizing: border-box; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; word-break: break-word; overflow-wrap: break-word; }
-        th { background-color: #f8f9fa; color: #495057; }
+        .score-btn {
+            margin-top: 15px; padding: 8px 16px; background-color: #0078d4; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9em;
+        }
+        .score-btn:hover { background-color: #005a9e; }
+
+        /* Modal CSS */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px;
+        }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+
+        .tables-container { display: flex; flex-direction: column; }
+        .data-table-wrap { width: 100%; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; box-sizing: border-box; overflow-x: auto; }
+        .data-table-wrap h3 { margin-top: 0; color: #34495e; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; word-wrap: break-word; word-break: break-word; overflow-wrap: break-word; vertical-align: top; }
+        th { background-color: #f8f9fa; color: #495057; position: relative; }
+
+        /* Custom Table Column Widths */
+        .orphan-table th:nth-child(1) { width: 20%; }
+        .orphan-table th:nth-child(2) { width: 25%; }
+        .orphan-table th:nth-child(3) { width: 15%; }
+        .orphan-table th:nth-child(4) { width: 30%; }
+        .orphan-table th:nth-child(5) { width: 10%; }
         
+        .guest-table th:nth-child(1) { width: 30%; }
+        .guest-table th:nth-child(2) { width: 40%; }
+        .guest-table th:nth-child(3) { width: 15%; }
+        .guest-table th:nth-child(4) { width: 15%; }
+
+        .priv-table th:nth-child(1) { width: 25%; }
+        .priv-table th:nth-child(2) { width: 10%; }
+        .priv-table th:nth-child(3) { width: 50%; }
+        .priv-table th:nth-child(4) { width: 15%; }
+
+        .scrollable-cell { max-height: 120px; overflow-y: auto; display: block; padding-right: 5px; }
+
+        /* Tooltip CSS */
+        .tooltip-icon {
+            display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; background-color: #0078d4; color: white; font-size: 12px; font-weight: bold; cursor: help; margin-left: 5px; position: relative;
+        }
+        .tooltip-text {
+            visibility: hidden; width: 250px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -125px; opacity: 0; transition: opacity 0.3s; font-size: 0.9em; font-weight: normal; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .tooltip-text::after { content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent; }
+        .tooltip-icon:hover .tooltip-text { visibility: visible; opacity: 1; }
+
         @media (max-width: 768px) {
             .kpi-card { width: 48%; }
-            .data-table-wrap { width: 100%; }
         }
     </style>
 </head>
@@ -45,7 +89,24 @@
         <div class="score-card">
             <h3>Overall Permission Health Score</h3>
             <div class="score-circle">
-                <div class="score-inner">88/100</div>
+                <div class="score-inner">60/100</div>
+            </div>
+            <button id="scoreBtn" class="score-btn">How is this calculated?</button>
+        </div>
+
+        <!-- Score Modal -->
+        <div id="scoreModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Permission Health Score Logic</h2>
+                <p>The Permission Health Score begins at <strong>100</strong> and deducts points based on identified risks:</p>
+                <ul>
+                    <li><strong>-2 points</strong> for each High Risk User.</li>
+                    <li><strong>-1 point</strong> for each Orphaned User.</li>
+                </ul>
+                <p><strong>Formula:</strong></p>
+                <code style="background: #f4f4f4; padding: 5px; border-radius: 3px; display: block;">Score = 100 - (HighRiskUsers * 2) - (TotalOrphaned * 1)</code>
+                <p><em>Note: The minimum score is 0.</em></p>
             </div>
         </div>
 
@@ -53,19 +114,19 @@
         <div class="kpi-container">
             <div class="kpi-card">
                 <h3>Total Users</h3>
-                <div class="value">14</div>
+                <div class="value">70</div>
             </div>
             <div class="kpi-card">
                 <h3>Total Guests</h3>
-                <div class="value">5</div>
+                <div class="value">2</div>
             </div>
             <div class="kpi-card">
                 <h3>Orphaned Users</h3>
-                <div class="value">6</div>
+                <div class="value">26</div>
             </div>
             <div class="kpi-card">
                 <h3>High Risk Users</h3>
-                <div class="value">3</div>
+                <div class="value">7</div>
             </div>
         </div>
 
@@ -73,52 +134,86 @@
         <div class="tables-container">
             <div class="data-table-wrap">
                 <h3>Orphaned Users</h3>
-                <table>
+                <table class="orphan-table">
                     <thead>
-                        <tr><th>Name</th><th>UPN</th><th>Risk Level</th></tr>
+                        <tr>
+                            <th>Name</th>
+                            <th>UPN</th>
+                            <th>Status</th>
+                            <th>Sites Found</th>
+                            <th>Risk Level 
+                                <span class="tooltip-icon">?<span class="tooltip-text"><strong>HIGH:</strong> Deleted/Disabled with direct permissions.<br><strong>MEDIUM:</strong> SoftDeleted or Disabled without perms.<br><strong>LOW:</strong> Deleted with no permissions.</span></span>
+                            </th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Retired Admin</td><td>retired_admin@icclabvn.onmicrosoft.com</td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr><tr><td>Guest Partner</td><td>guest_partner#EXT#@icclabvn.onmicrosoft.com</td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr><tr><td>Mismatch User</td><td>mismatch_user@icclabvn.onmicrosoft.com</td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr><tr><td>Ex Member</td><td>ex_member@icclabvn.onmicrosoft.com</td><td style='color:#ffc107; font-weight:bold;'>MEDIUM</td></tr><tr><td>Vendor External</td><td>vendor_external#EXT#@icclabvn.onmicrosoft.com</td><td style='color:#ffc107; font-weight:bold;'>MEDIUM</td></tr><tr><td>Disabled Dev</td><td>disabled_dev@icclabvn.onmicrosoft.com</td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr>
+                        <tr><td>Alex Wilber</td><td>alexw1@phamhung.name.vn</td><td>Deleted</td><td><div class='scrollable-cell'>, Team Site with Data, icclabvn, TeamTestRenamed, Live @ Contoso</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr><tr><td>Hoan Le</td><td>hoan.le_temp@phamhung.name.vn</td><td>Deleted</td><td><div class='scrollable-cell'>, Apps, Brand Guide, Syria 2, TestPermissionSyncFromTeam-Member Create new Channel</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr><tr><td>Isaiah Langer</td><td>isaiahl@icclabvn.onmicrosoft.com</td><td>Disabled</td><td><div class='scrollable-cell'>https://icclabvn-my.sharepoint.com/</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr><tr><td>Lee Gu</td><td>leeg_temp@icclabvn.onmicrosoft.com</td><td>Deleted</td><td><div class='scrollable-cell'>, IT Hub</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr><tr><td>pham.ngoc.hung86</td><td>pham.ngoc.hung86_gmail.com#ext#@icclabvn.onmicrosoft.com</td><td>GuestOrphaned</td><td><div class='scrollable-cell'>Communication site, Team Site with Data, TestPermissionSyncFromTeam, Test Private Group</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr><tr><td>SPC Mismatch Integ (New)</td><td>spc_mismatch_integ@icclabvn.onmicrosoft.com</td><td>Deleted</td><td><div class='scrollable-cell'>SPCleanTest, ShareCalendarWithTeam</div></td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr><tr><td>SPClean Seed Gamma</td><td>spc.seed.gamma@icclabvn.onmicrosoft.com</td><td>Deleted</td><td><div class='scrollable-cell'>All Company, IT Department, TeamTestRenamed-Private Channel Test Test 1 2</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr><tr><td>Guest Contributor</td><td>urn%3aspo%3aanon#50ea3590a865eef29a0d7a6dcdad7335cb2062808d990118c0afbb681bd9dc65</td><td>Deleted</td><td><div class='scrollable-cell'>Team Site with Data</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr><tr><td>Guest Contributor</td><td>urn%3aspo%3aanon#58b687cfa041eecccac844c4e9c2e84ed57b51941d58545f0c718e40d89de534</td><td>Deleted</td><td><div class='scrollable-cell'>Introducing Landon Miami</div></td><td style='color:#28a745; font-weight:bold;'>LOW</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="data-table-wrap">
                 <h3>Top High-Risk Guests</h3>
-                <table>
+                <table class="guest-table">
                     <thead>
-                        <tr><th>Name</th><th>UPN</th><th>Risk Level</th></tr>
+                        <tr>
+                            <th>Name</th>
+                            <th>UPN</th>
+                            <th>Status</th>
+                            <th>Risk Level
+                                <span class="tooltip-icon">?<span class="tooltip-text"><strong>HIGH:</strong> Full Control/Owner OR inactive > 180 days.<br><strong>MEDIUM:</strong> Edit/Write OR inactive > 90 days.<br><strong>LOW:</strong> Read and recently active.</span></span>
+                            </th>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr><td>Guest Partner</td><td>guest_partner#EXT#@icclabvn.onmicrosoft.com</td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr><tr><td>Vendor External</td><td>vendor_external#EXT#@icclabvn.onmicrosoft.com</td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr>
+                        <tr><td>phamn</td><td>phamn_unicc.org#ext#@icclabvn.onmicrosoft.com</td><td>Guest</td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr><tr><td>pham.ngoc.hung86</td><td>pham.ngoc.hung86_gmail.com#ext#@icclabvn.onmicrosoft.com</td><td>Guest</td><td style='color:#dc3545; font-weight:bold;'>HIGH</td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="data-table-wrap">
                 <h3>Top Privileged Users</h3>
-                <table>
+                <table class="priv-table">
                     <thead>
                         <tr><th>UPN</th><th>Site Count</th><th>Sites</th><th>Permission Sources</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>admin@icclabvn.onmicrosoft.com</td><td>3</td><td>https://icclabvn.sharepoint.com, https://icclabvn.sharepoint.com/sites/dev, https://icclabvn.sharepoint.com/sites/mismatchtest</td><td>SCA, Owner</td></tr><tr><td>secadmin@icclabvn.onmicrosoft.com</td><td>2</td><td>https://icclabvn.sharepoint.com, https://icclabvn.sharepoint.com/sites/dev</td><td>SCA</td></tr><tr><td>retired_admin@icclabvn.onmicrosoft.com</td><td>1</td><td>https://icclabvn.sharepoint.com</td><td>Owner</td></tr><tr><td>site_owner@icclabvn.onmicrosoft.com</td><td>1</td><td>https://icclabvn.sharepoint.com/sites/dev</td><td>Owner</td></tr><tr><td>lead_dev@icclabvn.onmicrosoft.com</td><td>1</td><td>https://icclabvn.sharepoint.com/sites/mismatchtest</td><td>Direct</td></tr>
+                        <tr><td>adelev@phamhung.name.vn</td><td>44</td><td><div class='scrollable-cell'>https://icclabvn.sharepoint.com/sites/appcatalog, https://icclabvn.sharepoint.com/sites/BrandGuide, https://icclabvn.sharepoint.com/sites/ContentCenter, https://icclabvn.sharepoint.com/sites/Demos, https://icclabvn.sharepoint.com/sites/DIST-Microsoft365LearningPathways, https://icclabvn.sharepoint.com/sites/icclabvn-Private-Test, https://icclabvn.sharepoint.com/sites/IntranetTest, https://icclabvn.sharepoint.com/sites/ITDepartment, https://icclabvn.sharepoint.com/sites/ITHub, https://icclabvn.sharepoint.com/sites/ITVolunteer, https://icclabvn.sharepoint.com/sites/leadership-connection, https://icclabvn.sharepoint.com/sites/M365LP, https://icclabvn.sharepoint.com/sites/NewEmployeeOnboardingNew, https://icclabvn.sharepoint.com/sites/Reservation, https://icclabvn.sharepoint.com/sites/Syria, https://icclabvn.sharepoint.com/sites/Syria-Test, https://icclabvn.sharepoint.com/sites/TeamTest-PrivateChannelTest, https://icclabvn.sharepoint.com/sites/test classic, https://icclabvn.sharepoint.com/sites/TestCSS, https://icclabvn.sharepoint.com/sites/TestWorkflow, https://icclabvn.sharepoint.com/sites/ThePerspective, https://icclabvn.sharepoint.com/sites/Workplace, https://icclabvn.sharepoint.com/teams/cases_test, https://icclabvn.sharepoint.com/teams/CustomSearch, https://icclabvn.sharepoint.com/teams/mena-sytar-Syria-Tartous3Private, https://icclabvn.sharepoint.com/teams/Syria-TestPrivateTograntPerm</div></td><td><div class='scrollable-cell'>SCA, Owner</div></td></tr><tr><td>hungiccvn@icclabvn.onmicrosoft.com</td><td>10</td><td><div class='scrollable-cell'>https://icclabvn.sharepoint.com/sites/mena-sytar, https://icclabvn.sharepoint.com/sites/Syria, https://icclabvn.sharepoint.com/sites/TeamTest-TestPrivateChange, https://icclabvn.sharepoint.com/sites/wgive, https://icclabvn.sharepoint.com/sites/wlive, https://icclabvn.sharepoint.com/sites/work</div></td><td><div class='scrollable-cell'>SCA, Owner</div></td></tr><tr><td>diegos@phamhung.name.vn</td><td>4</td><td><div class='scrollable-cell'>https://icclabvn.sharepoint.com/sites/DataSite, https://icclabvn.sharepoint.com/sites/Reservation, https://icclabvn.sharepoint.com/sites/SPCleanTest, https://icclabvn.sharepoint.com/sites/wlive</div></td><td><div class='scrollable-cell'>Owner, SCA</div></td></tr><tr><td>hoan.le_temp@phamhung.name.vn</td><td>3</td><td><div class='scrollable-cell'>https://icclabvn.sharepoint.com/sites/Syria, https://icclabvn.sharepoint.com/teams/TestPermissionSyncFromTeam-MemberCreatenewChannel</div></td><td><div class='scrollable-cell'>SCA, Owner</div></td></tr>
                     </tbody>
                 </table>
             </div>
 
             <div class="data-table-wrap">
                 <h3>Over-Permissioned Users (EAS)</h3>
-                <table>
+                <table class="overperm-table">
                     <thead>
                         <tr><th>UPN</th><th>Full Control Count</th><th>Edit Count</th><th>Read Count</th><th>EAS Score</th><th>Red Alert Badge</th></tr>
                     </thead>
                     <tbody>
-                        <tr><td>excessive_user1@icclabvn.onmicrosoft.com</td><td>35</td><td>10</td><td>5</td><td>130</td><td><span style='color:#dc3545; font-weight:bold;'>RED ALERT</span></td></tr><tr><td>excessive_user2@icclabvn.onmicrosoft.com</td><td>20</td><td>15</td><td>10</td><td>100</td><td><span style='color:#28a745;'>Normal</span></td></tr><tr><td>power_user3@icclabvn.onmicrosoft.com</td><td>12</td><td>8</td><td>20</td><td>72</td><td><span style='color:#28a745;'>Normal</span></td></tr><tr><td>contractor_op@icclabvn.onmicrosoft.com</td><td>8</td><td>5</td><td>15</td><td>49</td><td><span style='color:#28a745;'>Normal</span></td></tr>
+                        <tr><td>spc_mismatch_integ@icclabvn.onmicrosoft.com</td><td>0</td><td>2</td><td>0</td><td>4</td><td><span style='color:#28a745;'>Normal</span></td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+    
+    <script>
+        // Modal Script
+        var modal = document.getElementById("scoreModal");
+        var btn = document.getElementById("scoreBtn");
+        var span = document.getElementsByClassName("close")[0];
+
+        btn.onclick = function() {
+            modal.style.display = "block";
+        }
+        span.onclick = function() {
+            modal.style.display = "none";
+        }
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
 </body>
 </html>
