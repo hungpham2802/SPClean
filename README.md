@@ -78,7 +78,7 @@ Register-SPCLicense -LicenseKey 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'
 
 | Requirement | Minimum version |
 | --- | --- |
-| PowerShell | 5.1 or 7+ |
+| PowerShell | 7+ |
 | PnP.PowerShell | 2.0.0 (tested on 3.2.0) |
 | Microsoft.Graph.Authentication | 2.0.0 (tested on 2.38.0) |
 | SharePoint Online role | Site Collection Administrator (single site) or SharePoint Administrator (all sites) |
