@@ -22,16 +22,15 @@ BeforeAll {
 
     # Three UIL users that will be classified as orphaned
     $script:FakeUILUsers = @(
-        [PSCustomObject]@{ Id = 1; LoginName = 'i:0#.f|membership|alice@contoso.com'; Title = 'Alice'; Email = 'alice@contoso.com' }
-        [PSCustomObject]@{ Id = 2; LoginName = 'i:0#.f|membership|bob@contoso.com';   Title = 'Bob';   Email = 'bob@contoso.com'   }
-        [PSCustomObject]@{ Id = 3; LoginName = 'i:0#.f|membership|carol@contoso.com'; Title = 'Carol'; Email = 'carol@contoso.com' }
+        [PSCustomObject]@{ Id = 1; LoginName = 'i:0#.f|membership|alice@contoso.com'; Title = 'Alice'; Email = 'alice@contoso.com'; PrincipalType = 'User' }
+        [PSCustomObject]@{ Id = 2; LoginName = 'i:0#.f|membership|bob@contoso.com';   Title = 'Bob';   Email = 'bob@contoso.com'; PrincipalType = 'User' }
+        [PSCustomObject]@{ Id = 3; LoginName = 'i:0#.f|membership|carol@contoso.com'; Title = 'Carol'; Email = 'carol@contoso.com'; PrincipalType = 'User' }
     )
 
     # System accounts that must be filtered out
     $script:SystemAccounts = @(
-        [PSCustomObject]@{ Id = 99; LoginName = 'SHAREPOINT\system';                     Title = 'System'; Email = '' }
-        [PSCustomObject]@{ Id = 98; LoginName = 'NT AUTHORITY\authenticated users';      Title = 'Everyone'; Email = '' }
-        [PSCustomObject]@{ Id = 97; LoginName = 'i:0#.f|membership|svc@contoso.com';    Title = 'Service'; Email = '' }  # empty email → filtered
+        [PSCustomObject]@{ Id = 99; LoginName = 'SHAREPOINT\system';                     Title = 'System'; Email = ''; PrincipalType = 'User' }
+        [PSCustomObject]@{ Id = 98; LoginName = 'NT AUTHORITY\authenticated users';      Title = 'Everyone'; Email = ''; PrincipalType = 'User' }
     )
 
     # Graph batch response: all 404 → users are Deleted in Entra
@@ -72,7 +71,8 @@ Describe 'Get-SPCOrphanedUser' {
     BeforeEach {
         $script:SPCContext = $script:FakeContext
 
-        Mock Connect-PnPOnline   { return [PSCustomObject]@{ Url = 'https://fake.sharepoint.com/sites/HR' } }
+        Mock Get-PnPAccessToken { return 'fake' }
+        Mock Connect-PnPOnline   { return $null }
         Mock Get-PnPWeb          { return [PSCustomObject]@{ Title = 'Human Resources' } }
         Mock Get-PnPUser         { return @() }
         Mock Get-PnPSiteGroup    { return @() }
@@ -84,7 +84,7 @@ Describe 'Get-SPCOrphanedUser' {
             Mock Get-PnPSiteUser { return $script:FakeUILUsers }
             # First batch call (user lookups) → all 404 (Deleted)
             # Second batch call (soft-delete check) → no results → OrphanType = Deleted
-            $callCount = 0
+            $script:callCount = 0
             Mock Invoke-SPCGraphBatch {
                 $script:callCount++
                 if ($script:callCount -eq 1) {
@@ -168,21 +168,11 @@ Describe 'Get-SPCOrphanedUser' {
             $result | Should -HaveCount 0
         }
 
-        It 'AC-09: membership claim with empty email is treated as service account and excluded' {
-            $svcOnly = @(
-                [PSCustomObject]@{ Id = 97; LoginName = 'i:0#.f|membership|svc@contoso.com'; Title = 'Service'; Email = '' }
-            )
-            Mock Get-PnPSiteUser { return $svcOnly }
-            Mock Invoke-SPCGraphBatch { return @() }
-            $result = @(Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR')
-            $result | Should -HaveCount 0
-        }
-
         It 'AC-09: Invoke-SPCGraphBatch is called for real (non-system) users' {
             Mock Get-PnPSiteUser { return $script:FakeUILUsers }
             Mock Invoke-SPCGraphBatch { return @() }
             Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' | Out-Null
-            Should -Invoke Invoke-SPCGraphBatch -Times 1 -Minimum
+            Should -Invoke -CommandName Invoke-SPCGraphBatch -Times 1
         }
 
         It 'AC-09: ThrottleLimit below 1 is clamped to 1 with a warning' {

@@ -1,4 +1,4 @@
-#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
+﻿#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
@@ -21,7 +21,8 @@ Describe 'Repair-SPCMismatchUser' {
         $script:SPCContext = $script:FakeContext
 
         Mock Get-PnPAccessToken { return 'fake-token' }
-        Mock Connect-PnPOnline { return [PSCustomObject]@{ Url = 'https://fake.sharepoint.com/sites/HR' } }
+        Mock Get-PnPAccessToken { return 'fake' }
+        Mock Connect-PnPOnline { return $null }
         Mock Remove-PnPUser {}
         Mock Get-PnPRoleAssignment { return @() }
         Mock Add-PnPRoleAssignment {}

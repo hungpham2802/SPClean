@@ -1,4 +1,4 @@
-#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
+﻿#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
@@ -52,11 +52,16 @@ Describe 'Remove-SPCOrphanedUser' {
     BeforeEach {
         $script:SPCContext = $script:FakeContext
 
-        Mock Connect-PnPOnline           { return [PSCustomObject]@{ Url = 'fake' } }
+        Mock Get-PnPAccessToken { return 'fake' }
+        Mock Connect-PnPOnline           { return $null }
         Mock Remove-PnPUser              {}
         Mock Get-PnPRoleAssignment       { return @() }
         Mock Remove-PnPRoleAssignment    {}
         Mock Save-SPCPermissionSnapshot  { return [System.IO.FileInfo]::new('C:\fake\snap.json') }
+        Mock Get-PnPWeb                  {}
+        Mock Set-PnPTenantSite           {}
+        Mock Invoke-RestMethod           { return [PSCustomObject]@{ userPrincipalName = 'admin@contoso.com' } }
+        Mock Remove-PnPSiteCollectionAdmin {}
     }
 
     Context 'AC-06: WhatIf writes exact SRS message, no changes made' {

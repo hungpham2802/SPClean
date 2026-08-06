@@ -23,6 +23,7 @@ BeforeAll {
             isTesting      = $IsTesting
             registeredAt   = [datetime]::UtcNow.AddDays(-30).ToString('o')
             lastVerifiedAt = $lastVerifiedAt
+            registeredTenant = 'contoso'
         } | ConvertTo-Json | Set-Content -Path $Path -Encoding UTF8
     }
 
@@ -286,6 +287,7 @@ Describe 'Register-SPCLicense' {
         $script:SPCLicenseCache = $null
         $script:LicenseFilePath = Join-Path $TestDrive 'license.lic'
         Remove-Item -Path $script:LicenseFilePath -ErrorAction SilentlyContinue
+        $script:SPCContext = [PSCustomObject]@{ TenantName = 'contoso' }
     }
 
     It 'writes license.lic and returns SPC.LicenseInfo on success' {
@@ -379,6 +381,7 @@ Describe 'Assert-SPCProLicense' {
         $script:SPCLicenseCache = $null
         $script:LicenseFilePath = Join-Path $TestDrive 'license.lic'
         Remove-Item -Path $script:LicenseFilePath -ErrorAction SilentlyContinue
+        $script:SPCContext = [PSCustomObject]@{ TenantName = 'contoso' }
     }
 
     It 'does not throw when Status=Active Tier=PRO' {
@@ -412,6 +415,7 @@ Describe 'Assert-SPCConsultantLicense' {
         $script:SPCLicenseCache = $null
         $script:LicenseFilePath = Join-Path $TestDrive 'license.lic'
         Remove-Item -Path $script:LicenseFilePath -ErrorAction SilentlyContinue
+        $script:SPCContext = [PSCustomObject]@{ TenantName = 'contoso' }
     }
 
     It 'does not throw when Status=Active Tier=CONSULTANT' {
@@ -449,6 +453,7 @@ Describe 'Feature Gate Integration' {
         $script:LicenseFilePath = Join-Path $TestDrive 'license.lic'
         Remove-Item -Path $script:LicenseFilePath -ErrorAction SilentlyContinue
         Mock Test-SPCConnection {}
+        Mock Get-PnPAccessToken { return 'fake' }
         Mock Connect-PnPOnline {}
         Mock Disconnect-PnPOnline {}
     }

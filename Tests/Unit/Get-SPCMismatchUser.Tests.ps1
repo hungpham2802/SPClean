@@ -20,15 +20,17 @@ BeforeAll {
         [PSCustomObject]@{ Id = 4; LoginName = 'i:0#.f|membership|dup@contoso.com'; Title = 'Dup 1'; Email = 'dup@contoso.com'; AadObjectId = [guid]'44444444-4444-4444-4444-444444444444' }
         [PSCustomObject]@{ Id = 5; LoginName = 'i:0#.f|membership|dup@contoso.com'; Title = 'Dup 2'; Email = 'dup@contoso.com'; AadObjectId = [guid]'44444444-4444-4444-4444-444444444445' }
         [PSCustomObject]@{ Id = 6; LoginName = 'i:0#.f|membership|nomap@contoso.com'; Title = 'NoMap'; Email = 'nomap@contoso.com'; AadObjectId = [guid]::Empty }
-    )
+    ) | ForEach-Object {
+        $_ | Add-Member -MemberType ScriptMethod -Name IsPropertyAvailable -Value { return $true } -PassThru
+    }
 }
 
 Describe 'Get-SPCMismatchUser' {
     BeforeEach {
         $script:SPCContext = $script:FakeContext
 
-        Mock Get-PnPAccessToken { return 'fake-token' }
-        Mock Connect-PnPOnline { return [PSCustomObject]@{ Url = 'https://fake.sharepoint.com/sites/HR' } }
+        Mock Get-PnPAccessToken { return 'fake' }
+        Mock Connect-PnPOnline { return $null }
         Mock Get-PnPWeb { return [PSCustomObject]@{ Title = 'Human Resources' } }
         Mock Get-PnPUser { return $script:FakeUILUsers }
     }

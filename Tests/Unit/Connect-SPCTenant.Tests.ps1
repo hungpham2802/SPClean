@@ -13,7 +13,8 @@ Describe 'Connect-SPCTenant' {
 
     BeforeEach {
         $script:SPCContext = $null
-        Mock Connect-PnPOnline  { return [PSCustomObject]@{ Url = 'https://fake-admin.sharepoint.com' } }
+        Mock Get-PnPAccessToken { return 'fake' }
+        Mock Connect-PnPOnline  { return $null }
         Mock Connect-MgGraph    {}
         Mock Get-PnPGraphAccessToken { return 'fake-graph-token' }
     }
@@ -67,24 +68,24 @@ Describe 'Connect-SPCTenant' {
 
     Context 'Successful Interactive connection' {
         It 'AC-11: returns SPC.ConnectionInfo object' {
-            $result = Connect-SPCTenant -TenantName 'contoso'
+            $result = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id'
             $result.PSObject.TypeNames | Should -Contain 'SPC.ConnectionInfo'
         }
 
         It 'AC-11: output contains TenantName and AuthMethod' {
-            $result = Connect-SPCTenant -TenantName 'contoso'
+            $result = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id'
             $result.TenantName  | Should -Be 'contoso'
             $result.AuthMethod  | Should -Be 'Interactive'
         }
 
         It 'AC-11: populates $script:SPCContext after connection' {
-            Connect-SPCTenant -TenantName 'contoso' | Out-Null
+            Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id' | Out-Null
             $script:SPCContext            | Should -Not -BeNullOrEmpty
             $script:SPCContext.TenantName | Should -Be 'contoso'
         }
 
         It 'AC-11: calls Connect-PnPOnline once for Interactive auth' {
-            Connect-SPCTenant -TenantName 'contoso' | Out-Null
+            Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id' | Out-Null
             Should -Invoke Connect-PnPOnline -Times 1 -Exactly
         }
     }
@@ -120,7 +121,7 @@ Describe 'Connect-SPCTenant' {
 
     Context 'AC-12: no credentials in output stream' {
         It 'AC-12: verbose output does not contain credential strings' {
-            $out = Connect-SPCTenant -TenantName 'contoso' -Verbose 4>&1 5>&1
+            $out = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id' -Verbose 4>&1 5>&1
             $out | ForEach-Object { [string]$_ } |
                 Should -Not -Match 'password|secret|token|pfx|credential'
         }
