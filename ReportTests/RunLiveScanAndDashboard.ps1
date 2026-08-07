@@ -1,4 +1,4 @@
-﻿# D:\Project\SPClean\ReportTests\RunLiveScanAndDashboard.ps1
+# D:\Project\SPClean\ReportTests\RunLiveScanAndDashboard.ps1
 param(
     [string]$TenantName = "icclabvn.onmicrosoft.com",
     [string]$ClientId = "eecf892a-44c3-48fe-aa2f-b9e332dda328",
@@ -70,14 +70,11 @@ try {
     $highRiskUsers = $highRiskOrphans + $highRiskGuests
     $topHighRiskGuestsList = @($guests | Where-Object { $_.RiskLevel -eq 'HIGH' })
 
-    $allUpns = @()
-    if ($orphans) { $allUpns += $orphans.UPN }
-    if ($guests) { $allUpns += $guests.GuestEmail }
-    if ($privileged) { $allUpns += $privileged.UPN }
-    if ($overPermissioned) { $allUpns += $overPermissioned.UPN }
-    if ($mismatches) { $allUpns += $mismatches.UPN }
-
-    $totalUsers = ($allUpns | Where-Object { -not [string]::IsNullOrEmpty($_) } | Select-Object -Unique).Count
+    $graphToken = $conn.GraphAccessToken
+    $headers = @{ "Authorization" = "Bearer $graphToken"; "ConsistencyLevel" = "eventual" }
+    $response = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/users?`$count=true" -Headers $headers -ErrorAction SilentlyContinue
+    $totalUsers = $response.'@odata.count'
+    if ($null -eq $totalUsers) { $totalUsers = 0 }
 
     Write-Host "Generating HTML Dashboard at $OutputPath via New-SPCDashboardHtmlInternal..."
     "Generating HTML dashboard via New-SPCDashboardHtmlInternal..." | Out-File -FilePath $logFile -Append

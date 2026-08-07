@@ -1,4 +1,4 @@
-﻿# PnP 3.x removed Get-PnPGraphAccessToken; provide compat wrapper so existing mocks and call sites work.
+# PnP 3.x removed Get-PnPGraphAccessToken; provide compat wrapper so existing mocks and call sites work.
 if (-not (Get-Command -Name 'Get-PnPGraphAccessToken' -ErrorAction SilentlyContinue)) {
     function Get-PnPGraphAccessToken {
         [CmdletBinding()]
@@ -163,10 +163,11 @@ function Connect-SPCTenant {
 
         # SRS 3.1.1 step 5 — pipeline output
         $out = [PSCustomObject][ordered]@{
-            TenantName     = $shortName
-            AuthMethod     = $AuthMethod
-            ConnectedAt    = $connectedAt
-            ExpiresAt      = $connectedAt.AddHours(1)
+            TenantName       = $shortName
+            AuthMethod       = $AuthMethod
+            ConnectedAt      = $connectedAt
+            ExpiresAt        = $connectedAt.AddHours(1)
+            GraphAccessToken = $graphToken
         }
         $out.PSObject.TypeNames.Insert(0, 'SPC.ConnectionInfo')
         $out
