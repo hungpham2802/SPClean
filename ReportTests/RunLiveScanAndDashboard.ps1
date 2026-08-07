@@ -26,7 +26,7 @@ try {
 
     Write-Host "Running Get-SPCOrphanedUser scan across all sites..."
     "Scanning orphaned users..." | Out-File -FilePath $logFile -Append
-    $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled -ErrorAction SilentlyContinue)
+    $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled)
     "Orphans found: $($orphans.Count)" | Out-File -FilePath $logFile -Append
     
     if ($orphans) {
