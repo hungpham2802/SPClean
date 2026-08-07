@@ -1,16 +1,15 @@
-function Get-SPCOverPermissionedUser {
+function Get-SPCPrivilegedUser {
     <#
     .SYNOPSIS
-        Identifies over-permissioned users based on an Excessive Access Score (EAS).
+        Gets the top 20 privileged users across the SharePoint tenant.
     
     .DESCRIPTION
-        Scans site collections to determine user access levels (Full Control, Edit, Read).
-        Calculates the Excessive Access Score (EAS) using the formula:
-        EAS = (Full Control * 3) + (Edit * 2) + (Read * 1)
-        Flags users with an EAS greater than 100 with a Red Alert.
+        This cmdlet scans all site collections to identify users who are Site Collection Administrators,
+        members of the default Owners group, or have direct 'Full Control' assignments. 
+        It aggregates this data by UserPrincipalName and returns the top 20 users with the most privileged access.
     
     .EXAMPLE
-        Get-SPCOverPermissionedUser -ClientId "app-id" -Thumbprint "cert-thumb" -Tenant "tenant.onmicrosoft.com"
+        Get-SPCPrivilegedUser -ClientId "app-id" -Thumbprint "cert-thumb" -Tenant "tenant.onmicrosoft.com"
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
@@ -34,6 +33,8 @@ function Get-SPCOverPermissionedUser {
         if (Get-Command Test-SPCConnection -ErrorAction SilentlyContinue) {
             Test-SPCConnection
         }
+        $tempResults = [System.Collections.Generic.List[PSCustomObject]]::new()
+        
         $connectToSite = {
             param([string] $SiteUrl, [PSCustomObject] $Ctx)
             $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
@@ -66,7 +67,6 @@ function Get-SPCOverPermissionedUser {
                 }
             }
         }
-        $tempResults = [System.Collections.Generic.List[PSCustomObject]]::new()
     }
 
     process {
@@ -84,7 +84,7 @@ function Get-SPCOverPermissionedUser {
 
             foreach ($url in $sitesToScan) {
                 $counter++
-                Write-Progress -Activity "Scanning Sites for Over-Permissioned Users" -Status "Processing site $url ($counter / $totalSites)" -PercentComplete (($counter / $totalSites) * 100)
+                Write-Progress -Activity "Scanning Sites for Privileged Users" -Status "Processing site $url ($counter / $totalSites)" -PercentComplete (($counter / $totalSites) * 100)
                 Write-Verbose "Scanning site: $url"
 
                 try {
@@ -96,29 +96,52 @@ function Get-SPCOverPermissionedUser {
                         try {
                             $siteConnection = & $connectToSite -SiteUrl $url -Ctx $script:SPCContext
                             
-                            $roleAssignments = (Invoke-PnPSPRestMethod -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -Connection $siteConnection -ErrorAction SilentlyContinue).value
-                            foreach ($ra in $roleAssignments) {
-                                if ($ra.Member.PrincipalType -in 'User', 1 -and $ra.Member.LoginName -match "\|membership\|") {
-                                    $upn = $ra.Member.LoginName.Split("|")[-1]
-                                    
-                                    $roles = $ra.RoleDefinitionBindings.Name
-                                    $accessLevel = "None"
-                                    if ($roles -contains "Full Control") {
-                                        $accessLevel = "Full Control"
-                                    } elseif ($roles -contains "Edit" -or $roles -contains "Contribute") {
-                                        $accessLevel = "Edit"
-                                    } elseif ($roles -contains "Read" -or $roles -contains "View Only") {
-                                        $accessLevel = "Read"
-                                    }
-                                    
-                                    if ($accessLevel -ne "None") {
+                            # 1. SCAs - Use Get-PnPSiteCollectionAdmin to avoid large list thresholds
+                            $scas = Get-PnPSiteCollectionAdmin -Connection $siteConnection -ErrorAction SilentlyContinue
+                            foreach ($sca in $scas) {
+                                if (-not [string]::IsNullOrEmpty($sca.LoginName) -and $sca.LoginName -match "\|membership\|") {
+                                    $upn = $sca.LoginName.Split("|")[-1]
+                                    $tempResults.Add([PSCustomObject]@{
+                                        UPN = $upn
+                                        SiteUrl = $url
+                                        PermissionSource = "SCA"
+                                    })
+                                }
+                            }
+
+                            # 2. Owners Group
+                            $ownersGroup = Get-PnPGroup -AssociatedOwnerGroup -Connection $siteConnection -ErrorAction SilentlyContinue
+                            if ($ownersGroup) {
+                                $ownerMembers = Get-PnPGroupMember -Group $ownersGroup.Title -Connection $siteConnection -ErrorAction SilentlyContinue
+                                foreach ($member in $ownerMembers) {
+                                    if (-not [string]::IsNullOrEmpty($member.LoginName) -and $member.LoginName -match "\|membership\|") {
+                                        $upn = $member.LoginName.Split("|")[-1]
                                         $tempResults.Add([PSCustomObject]@{
                                             UPN = $upn
-                                            AccessLevel = $accessLevel
+                                            SiteUrl = $url
+                                            PermissionSource = "Owner"
                                         })
                                     }
                                 }
                             }
+
+                            # 3. Direct Assignments (Full Control)
+                            # Use REST API to bypass missing Get-PnPRoleAssignment in PnP 3.x
+                            $roleAssignments = (Invoke-PnPSPRestMethod -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -Connection $siteConnection -ErrorAction SilentlyContinue).value
+                            foreach ($ra in $roleAssignments) {
+                                $isFullControl = $ra.RoleDefinitionBindings | Where-Object { $_.Name -eq 'Full Control' }
+                                if ($isFullControl) {
+                                    if ($ra.Member.PrincipalType -in 'User', 1 -and $ra.Member.LoginName -match "\|membership\|") {
+                                        $upn = $ra.Member.LoginName.Split("|")[-1]
+                                        $tempResults.Add([PSCustomObject]@{
+                                            UPN = $upn
+                                            SiteUrl = $url
+                                            PermissionSource = "Direct"
+                                        })
+                                    }
+                                }
+                            }
+                            
                             $success = $true
                         } catch {
                             $ex = $_.Exception
@@ -138,58 +161,52 @@ function Get-SPCOverPermissionedUser {
                                 Write-Verbose "Throttled (429/503). Retrying in $waitTime seconds (Attempt $retryCount of $maxRetries)..."
                                 Start-Sleep -Seconds $waitTime
                                 if ($retryCount -eq $maxRetries) {
-                                    Write-Error "[ERR-GOPU-001] $(Get-Date -Format 'o'): Failed to process site collection '$url' after $maxRetries attempts due to throttling. Resource: $url." -ErrorAction Continue
+                                    Write-Error "[ERR-GPU-001] $(Get-Date -Format 'o'): Failed to process site collection '$url' after $maxRetries attempts due to throttling. Resource: $url." -ErrorAction Continue
                                 }
                             } else {
-                                Write-Error "[ERR-GOPU-002] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($ex.Message)" -ErrorAction Continue
-                                $success = $true
+                                Write-Error "[ERR-GPU-002] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($ex.Message)" -ErrorAction Continue
+                                $success = $true # break out of retry loop for non-throttling errors
                             }
                         }
                     }
                 } catch {
-                    Write-Error "[ERR-GOPU-003] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($_.Exception.Message)" -ErrorAction Continue
+                    Write-Error "[ERR-GPU-003] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($_.Exception.Message)" -ErrorAction Continue
                 }
             }
 
-            Write-Verbose "Calculating EAS..."
+            Write-Verbose "Aggregating results..."
             $foundCount = 0
             if ($tempResults.Count -gt 0) {
                 $grouped = $tempResults | Group-Object -Property UPN
                 $finalResults = foreach ($g in $grouped) {
-                    $fullControlCount = ($g.Group | Where-Object { $_.AccessLevel -eq 'Full Control' }).Count
-                    $editCount = ($g.Group | Where-Object { $_.AccessLevel -eq 'Edit' }).Count
-                    $readCount = ($g.Group | Where-Object { $_.AccessLevel -eq 'Read' }).Count
-                    
-                    $eas = ($fullControlCount * 3) + ($editCount * 2) + ($readCount * 1)
-                    $isRedAlert = $eas -gt 100
-                    
-                    [PSCustomObject]@{
+                    $obj = [PSCustomObject]@{
                         UPN = $g.Name
-                        FullControlCount = $fullControlCount
-                        EditCount = $editCount
-                        ReadCount = $readCount
-                        EAS = $eas
-                        IsRedAlert = $isRedAlert
+                        SiteCount = $g.Count
+                        Sites = $g.Group.SiteUrl | Select-Object -Unique
+                        PermissionSources = $g.Group.PermissionSource | Select-Object -Unique
                     }
+                    $obj.PSObject.TypeNames.Insert(0, 'SPC.PrivilegedUser')
+                    $obj
                 }
-                
-                $sorted = $finalResults | Sort-Object -Property EAS -Descending
-                $foundCount = $sorted.Count
-                Write-Output $sorted
+
+                $top20 = @($finalResults | Sort-Object -Property SiteCount -Descending)
+                if ($top20.Count -gt 20) { $top20 = $top20[0..19] }
+                $foundCount = $top20.Count
+                Write-Output $top20
             } else {
-                Write-Verbose "No users found."
+                Write-Verbose "No privileged users found."
                 Write-Output @()
             }
         } catch {
             $errCode = "ERR-AUTH-001"
             $exMsg = "[$errCode] $(Get-Date -Format 'yyyy-MM-dd HH:mm:ssZ'): Terminating error occurred. $($_.Exception.Message)"
-            Write-Error -Message $exMsg -Exception $_.Exception -ErrorAction Stop
+            Write-Error -Message $exMsg -Exception $_.Exception -ErrorId $errCode -ErrorAction Stop
         }
     }
 
     end {
         if ($null -eq $counter) { $counter = 0 }
         if ($null -eq $foundCount) { $foundCount = 0 }
-        Write-Information -MessageData "Completed Get-SPCOverPermissionedUser scan. Scanned $counter sites, found $foundCount users." -InformationAction Continue
+        Write-Information -MessageData "Completed Get-SPCPrivilegedUser scan. Scanned $counter sites, found $foundCount privileged users." -InformationAction Continue
     }
 }

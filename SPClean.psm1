@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 
 # Module-scoped connection state — set by Connect-SPCTenant, cleared by Disconnect-SPCTenant
 $script:SPCContext = $null

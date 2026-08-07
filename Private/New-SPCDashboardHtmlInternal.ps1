@@ -1,4 +1,4 @@
-function New-SPCDashboardHtmlInternal {
+﻿function New-SPCDashboardHtmlInternal {
     <#
     .SYNOPSIS
         Generates an offline HTML Dashboard for SPClean (Permission Health Dashboard v1.5).

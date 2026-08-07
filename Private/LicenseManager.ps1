@@ -1,4 +1,4 @@
-# Module-level license cache — populated by Get-SPCLicenseInfo, cleared by Register-SPCLicense
+﻿# Module-level license cache — populated by Get-SPCLicenseInfo, cleared by Register-SPCLicense
 # and Disconnect-SPCTenant. Not persisted across PowerShell sessions.
 $script:SPCLicenseCache = $null
 

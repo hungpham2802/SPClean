@@ -1,4 +1,4 @@
-# PnP 3.x removed Get-PnPGraphAccessToken; provide compat wrapper so existing mocks and call sites work.
+﻿# PnP 3.x removed Get-PnPGraphAccessToken; provide compat wrapper so existing mocks and call sites work.
 if (-not (Get-Command -Name 'Get-PnPGraphAccessToken' -ErrorAction SilentlyContinue)) {
     function Get-PnPGraphAccessToken {
         [CmdletBinding()]

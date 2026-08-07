@@ -224,6 +224,9 @@ function Get-SPCGuestAccess {
                                             if ($null -ne $userObj.signInActivity -and -not [string]::IsNullOrEmpty($userObj.signInActivity.lastSignInDateTime)) {
                                                 $guestDict[$upn].LastAccess = $userObj.signInActivity.lastSignInDateTime
                                             }
+                                            if ($null -ne $userObj.invitedBy -and $null -ne $userObj.invitedBy.user -and -not [string]::IsNullOrEmpty($userObj.invitedBy.user.email)) {
+                                                $guestDict[$upn].InvitedBy = $userObj.invitedBy.user.email
+                                            }
                                         }
                                     }
                                 }
@@ -295,6 +298,7 @@ function Get-SPCGuestAccess {
                     RiskLevel       = $riskLevel
                 }
 
+                $outputObj.PSObject.TypeNames.Insert(0, 'SPC.GuestUser')
                 Write-Output $outputObj
             }
         }

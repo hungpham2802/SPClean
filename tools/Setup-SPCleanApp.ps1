@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Automates the creation of an Entra ID Application Registration for the SPClean tool.
 .DESCRIPTION

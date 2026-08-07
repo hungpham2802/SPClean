@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Signs all SPClean module files with an Authenticode certificate.
 

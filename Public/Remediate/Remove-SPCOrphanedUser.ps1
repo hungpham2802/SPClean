@@ -1,4 +1,4 @@
-# Thin PS wrappers with [object] Connection so Pester can mock them without PnPConnection type coercion.
+﻿# Thin PS wrappers with [object] Connection so Pester can mock them without PnPConnection type coercion.
 if (Get-Command -Name 'Remove-PnPUser' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
     $__pnpRemoveUser = Get-Command 'Remove-PnPUser' -Module PnP.PowerShell
     function Remove-PnPUser {

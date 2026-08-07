@@ -1,4 +1,4 @@
-function Save-SPCPermissionSnapshot {
+﻿function Save-SPCPermissionSnapshot {
     <#
     .SYNOPSIS
         Saves a JSON snapshot of a user's permissions before removal per SRS 6.2.

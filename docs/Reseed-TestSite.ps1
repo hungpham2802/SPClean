@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Re-seeds SPCleanTest with 3 orphaned users so the integration tests can pass.
 

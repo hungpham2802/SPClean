@@ -1,4 +1,4 @@
-# PnP 3.x removed Add-PnPRoleAssignment; wrap Set-PnPWebPermission -AddRole.
+﻿# PnP 3.x removed Add-PnPRoleAssignment; wrap Set-PnPWebPermission -AddRole.
 if (-not (Get-Command -Name 'Add-PnPRoleAssignment' -ErrorAction SilentlyContinue)) {
     function Add-PnPRoleAssignment {
         [CmdletBinding()]

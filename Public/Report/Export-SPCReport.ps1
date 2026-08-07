@@ -1,4 +1,4 @@
-function Export-SPCReport {
+﻿function Export-SPCReport {
     <#
     .SYNOPSIS
         Generates a formatted report from [SPC.OrphanedUser] pipeline input per SRS 3.3.1.

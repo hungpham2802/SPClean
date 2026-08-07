@@ -1,4 +1,4 @@
-# D:\Project\SPClean\ReportTests\RunLiveScanAndDashboard.ps1
+﻿# D:\Project\SPClean\ReportTests\RunLiveScanAndDashboard.ps1
 param(
     [string]$TenantName = "icclabvn.onmicrosoft.com",
     [string]$ClientId = "eecf892a-44c3-48fe-aa2f-b9e332dda328",

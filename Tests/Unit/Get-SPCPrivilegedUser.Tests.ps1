@@ -1,10 +1,25 @@
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$sut = (Split-Path -Parent $here) + "\Public\Get-SPCPrivilegedUser.ps1"
-. $sut
+#Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
 Describe 'Get-SPCPrivilegedUser' {
     BeforeAll {
-        function Test-SPCConnection { return $true }
+        $script:sut = "$PSScriptRoot\..\..\Public\Scan\Get-SPCPrivilegedUser.ps1"
+        . $PSScriptRoot\..\..\Public\Scan\Get-SPCPrivilegedUser.ps1
+        function Test-SPCConnection {}
+        function Get-PnPTenantSite {}
+        function Connect-PnPOnline {}
+        function Get-PnPSiteCollectionAdmin {}
+        function Invoke-PnPSPRestMethod {}
+        function Get-PnPGroup {}
+        function Get-PnPGroupMember {}
+        function Start-Sleep {}
+    }
+
+    BeforeEach {
+        $script:SPCContext = [PSCustomObject]@{
+            TenantName = 'tenant'
+            AuthMethod = 'Interactive'
+            PnPContext = $null
+        }
     }
 
     Context 'When scanning sites' {
@@ -16,18 +31,19 @@ Describe 'Get-SPCPrivilegedUser' {
                 }
                 return $sites
             }
+            Mock Get-PnPAccessToken { return "MockToken" }
             Mock Connect-PnPOnline { return "MockConnection" }
             
-            Mock Get-PnPSiteUser {
+            Mock Get-PnPSiteCollectionAdmin {
                 $users = @()
                 for ($u=1; $u -le 25; $u++) {
                     # Every user is SCA on site corresponding to their number and below
-                    $users += [PSCustomObject]@{ LoginName = "i:0#.f|membership|user$u@domain.com"; IsSiteAdmin = $true }
+                    $users += [PSCustomObject]@{ LoginName = "i:0#.f|membership|user$u@domain.com" }
                 }
                 return $users
             }
             Mock Get-PnPGroup { return $null }
-            Mock Get-PnPRoleAssignment { return @() }
+            Mock Invoke-PnPSPRestMethod { return [PSCustomObject]@{ value = @() } }
 
             $result = Get-SPCPrivilegedUser
             $result.Count | Should -Be 20
@@ -38,17 +54,20 @@ Describe 'Get-SPCPrivilegedUser' {
     Context 'When checking permission sources' {
         It 'AC-F2-02 Should correctly identify SCA, Owner, and Direct Full Control' {
             Mock Get-PnPTenantSite { return @([PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/site1" }) }
+            Mock Get-PnPAccessToken { return "MockToken" }
             Mock Connect-PnPOnline { return "MockConnection" }
-            Mock Get-PnPSiteUser { return @([PSCustomObject]@{ LoginName = "i:0#.f|membership|usera@domain.com"; IsSiteAdmin = $true }) }
+            Mock Get-PnPSiteCollectionAdmin { return @([PSCustomObject]@{ LoginName = "i:0#.f|membership|usera@domain.com" }) }
             Mock Get-PnPGroup { return [PSCustomObject]@{ Title = "Owners" } }
             Mock Get-PnPGroupMember { return @([PSCustomObject]@{ LoginName = "i:0#.f|membership|userb@domain.com" }) }
-            Mock Get-PnPRoleAssignment {
-                return @(
-                    [PSCustomObject]@{ 
-                        Member = [PSCustomObject]@{ PrincipalType = 'User'; LoginName = "i:0#.f|membership|userc@domain.com" }
-                        RoleDefinitionBindings = @([PSCustomObject]@{ Name = 'Full Control' })
-                    }
-                )
+            Mock Invoke-PnPSPRestMethod {
+                return [PSCustomObject]@{
+                    value = @(
+                        [PSCustomObject]@{ 
+                            Member = [PSCustomObject]@{ PrincipalType = 'User'; LoginName = "i:0#.f|membership|userc@domain.com" }
+                            RoleDefinitionBindings = @([PSCustomObject]@{ Name = 'Full Control' })
+                        }
+                    )
+                }
             }
 
             $result = Get-SPCPrivilegedUser
@@ -68,10 +87,11 @@ Describe 'Get-SPCPrivilegedUser' {
     Context 'When no privileged user exists' {
         It 'AC-F2-03 Should return empty list gracefully' {
             Mock Get-PnPTenantSite { return @([PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/site1" }) }
+            Mock Get-PnPAccessToken { return "MockToken" }
             Mock Connect-PnPOnline { return "MockConnection" }
-            Mock Get-PnPSiteUser { return @() }
+            Mock Get-PnPSiteCollectionAdmin { return @() }
             Mock Get-PnPGroup { return $null }
-            Mock Get-PnPRoleAssignment { return @() }
+            Mock Invoke-PnPSPRestMethod { return [PSCustomObject]@{ value = @() } }
 
             $result = Get-SPCPrivilegedUser
             $result | Should -BeNullOrEmpty
@@ -80,10 +100,9 @@ Describe 'Get-SPCPrivilegedUser' {
 
     Context 'Negative Scenarios' {
         It 'AC-NEG-01 Should throw Terminating Error ERR-AUTH-001 when connection fails' {
-            Mock Get-PnPTenantSite { return @([PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/site1" }) }
-            Mock Connect-PnPOnline { throw "Connection failed" }
+            Mock Get-PnPTenantSite { throw "Connection failed" }
             
-            { Get-SPCPrivilegedUser } | Should -Throw -ErrorId "ERR-AUTH-001"
+            { Get-SPCPrivilegedUser } | Should -Throw -ErrorId "ERR-AUTH-001*"
         }
 
         It 'AC-NEG-02 Should write non-terminating error and continue for inaccessible sites' {
@@ -93,15 +112,16 @@ Describe 'Get-SPCPrivilegedUser' {
                     [PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/goodSite" }
                 ) 
             }
+            Mock Get-PnPAccessToken { return "MockToken" }
             Mock Connect-PnPOnline { 
                 if ($args[0] -match "errorSite") {
                     throw "Access Denied"
                 }
                 return "MockConnection"
             }
-            Mock Get-PnPSiteUser { return @([PSCustomObject]@{ LoginName = "i:0#.f|membership|good@domain.com"; IsSiteAdmin = $true }) }
+            Mock Get-PnPSiteCollectionAdmin { return @([PSCustomObject]@{ LoginName = "i:0#.f|membership|good@domain.com" }) }
             Mock Get-PnPGroup { return $null }
-            Mock Get-PnPRoleAssignment { return @() }
+            Mock Invoke-PnPSPRestMethod { return [PSCustomObject]@{ value = @() } }
 
             $result = Get-SPCPrivilegedUser -ErrorAction SilentlyContinue
             $result.Count | Should -Be 1
@@ -111,6 +131,7 @@ Describe 'Get-SPCPrivilegedUser' {
         It 'AC-NEG-03 Should implement exponential backoff retry on 429/503 errors' {
             Mock Get-PnPTenantSite { return @([PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/site1" }) }
             $global:retryCount = 0
+            Mock Get-PnPAccessToken { return "MockToken" }
             Mock Connect-PnPOnline { 
                 $global:retryCount++
                 if ($global:retryCount -lt 3) {
@@ -118,9 +139,9 @@ Describe 'Get-SPCPrivilegedUser' {
                 }
                 return "MockConnection"
             }
-            Mock Get-PnPSiteUser { return @() }
+            Mock Get-PnPSiteCollectionAdmin { return @() }
             Mock Get-PnPGroup { return $null }
-            Mock Get-PnPRoleAssignment { return @() }
+            Mock Invoke-PnPSPRestMethod { return [PSCustomObject]@{ value = @() } }
             Mock Start-Sleep { return $true } # Mock Start-Sleep to speed up test
 
             $result = Get-SPCPrivilegedUser
@@ -131,10 +152,11 @@ Describe 'Get-SPCPrivilegedUser' {
     Context 'Security Scenarios' {
         It 'AC-SEC-01 Should not leak credentials in verbose stream' {
             Mock Get-PnPTenantSite { return @([PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/site1" }) }
+            Mock Get-PnPAccessToken { return "MockToken" }
             Mock Connect-PnPOnline { return "MockConnection" }
-            Mock Get-PnPSiteUser { return @() }
+            Mock Get-PnPSiteCollectionAdmin { return @() }
             Mock Get-PnPGroup { return $null }
-            Mock Get-PnPRoleAssignment { return @() }
+            Mock Invoke-PnPSPRestMethod { return [PSCustomObject]@{ value = @() } }
 
             $verboseOutput = ""
             try {
@@ -145,7 +167,7 @@ Describe 'Get-SPCPrivilegedUser' {
         }
         
         It 'AC-SEC-03 Should not execute dynamic string via IEX' {
-            $scriptContent = Get-Content $sut -Raw
+            $scriptContent = Get-Content $script:sut -Raw
             $scriptContent -match 'iex|Invoke-Expression' | Should -BeFalse
         }
     }

@@ -1,4 +1,4 @@
-function Invoke-SPCGraphBatch {
+﻿function Invoke-SPCGraphBatch {
     <#
     .SYNOPSIS
         Sends Microsoft Graph JSON batch requests per SRS 5.1 (max 20/batch, 429 retry).

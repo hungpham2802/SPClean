@@ -1,4 +1,4 @@
-function New-SPCScanSchedule {
+﻿function New-SPCScanSchedule {
     <#
     .SYNOPSIS
         Creates a Windows Scheduled Task that runs Get-SPCOrphanedUser and Export-SPCReport per SRS 3.5.1.

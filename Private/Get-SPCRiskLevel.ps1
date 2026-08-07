@@ -1,4 +1,4 @@
-function Get-SPCRiskLevel {
+﻿function Get-SPCRiskLevel {
     <#
     .SYNOPSIS
         Classifies an orphaned user's risk level per SRS 3.2.2 (first-match rule table).

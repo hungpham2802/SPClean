@@ -1,4 +1,4 @@
-function Register-SPCLicense {
+﻿function Register-SPCLicense {
     <#
     .SYNOPSIS
         Registers an SPClean license key on the current machine.

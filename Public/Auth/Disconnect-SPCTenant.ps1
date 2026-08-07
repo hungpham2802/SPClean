@@ -1,4 +1,4 @@
-function Disconnect-SPCTenant {
+﻿function Disconnect-SPCTenant {
     <#
     .SYNOPSIS
         Clears the SPClean connection context and disconnects PnP and Graph sessions.

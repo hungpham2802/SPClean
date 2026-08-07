@@ -1,4 +1,4 @@
-# When unit tests dot-source only this file (without LicenseManager.ps1), the license
+﻿# When unit tests dot-source only this file (without LicenseManager.ps1), the license
 # gate functions are undefined. These stubs prevent CommandNotFoundException.
 # In a full module load, LicenseManager.ps1 loads alphabetically first and defines the
 # real implementations; the guard below ensures the stubs do NOT override them.

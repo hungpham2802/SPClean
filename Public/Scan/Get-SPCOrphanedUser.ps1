@@ -1,4 +1,4 @@
-# PnP 3.x removed Get-PnPSiteUser; Get-PnPUser now returns all UIL users without a filter.
+﻿# PnP 3.x removed Get-PnPSiteUser; Get-PnPUser now returns all UIL users without a filter.
 if (-not (Get-Command -Name 'Get-PnPSiteUser' -ErrorAction SilentlyContinue)) {
     function Get-PnPSiteUser {
         [CmdletBinding()]

@@ -1,4 +1,4 @@
-# Thin PS wrappers for PnP
+﻿# Thin PS wrappers for PnP
 if (Get-Command -Name 'Remove-PnPUser' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
     $__pnpRemoveUser = Get-Command 'Remove-PnPUser' -Module PnP.PowerShell
     function Remove-PnPUser {

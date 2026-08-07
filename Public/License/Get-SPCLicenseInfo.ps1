@@ -1,4 +1,4 @@
-function Get-SPCLicenseInfo {
+﻿function Get-SPCLicenseInfo {
     <#
     .SYNOPSIS
         Returns the currently registered SPClean license status.
