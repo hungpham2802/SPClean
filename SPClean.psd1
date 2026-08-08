@@ -1,11 +1,11 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '1.5.0'
+    ModuleVersion     = '1.5.1'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'David Pham'          
     CompanyName       = 'M365Automation.com'       
     Copyright         = '(c) 2026 David Pham. Licensed under the MIT License.'
-    Description       = 'Detects, reports, and remediates orphaned users in SharePoint Online. Identifies accounts in the User Information List whose Entra ID state is Deleted, SoftDeleted, Disabled, or GuestOrphaned. Supports AppOnly (certificate) and Interactive authentication, HTML/CSV/JSON reports, permission snapshots, and Windows Scheduled Task automation.'
+    Description       = 'Keep your SharePoint Online environment clean, secure, and compliant. SPClean helps Microsoft 365 administrators quickly discover orphaned users, stale identities, and disconnected guest accounts that can create security and governance risks. With automated detection, detailed reporting, and remediation capabilities, SPClean turns hours of manual investigation into a repeatable and scalable process. Supports App-Only authentication, scheduled execution, permission snapshots, and HTML/CSV/JSON reporting.'
     PowerShellVersion = '7.0'
 
     RequiredModules   = @(
