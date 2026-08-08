@@ -193,6 +193,12 @@ Connect-SPCTenant -TenantName contoso `
     -CertificatePassword $certPwd
 ```
 
+```powershell
+Connect-SPCTenant -TenantName contoso `
+    -AuthMethod AppOnly `
+    -ClientId    '<your-app-client-id>' `
+    -CertificateThumbprint <Thumbprint>
+```
 ---
 
 ### Method C — AppOnly / client secret

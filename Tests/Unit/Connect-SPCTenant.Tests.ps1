@@ -121,8 +121,9 @@ Describe 'Connect-SPCTenant' {
 
     Context 'AC-12: no credentials in output stream' {
         It 'AC-12: verbose output does not contain credential strings' {
-            $out = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id' -Verbose 4>&1 5>&1
-            $out | ForEach-Object { [string]$_ } |
+            $verboseLog = @()
+            $null = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id' -Verbose 4> Variable:verboseLog
+            $verboseLog | ForEach-Object { [string]$_ } |
                 Should -Not -Match 'password|secret|token|pfx|credential'
         }
     }

@@ -303,7 +303,7 @@ Describe "Get-SPCGuestAccess" {
                 throw "Graph API Error 404 Not Found"
             }
 
-            $result = Get-SPCGuestAccess -SiteUrl "https://test"
+            $result = Get-SPCGuestAccess -SiteUrl "https://test" 2>$null
             
             $result[0].LastAccess | Should -Be 'N/A'
         }
@@ -324,7 +324,7 @@ Describe "Get-SPCGuestAccess" {
             
             # Since there's 2 users, if we had batch size 1 (hypothetically) it would loop twice. 
             # We mock to ensure Invoke-SPCGraphBatch is only called once and breaks.
-            $result = Get-SPCGuestAccess -SiteUrl "https://test"
+            $result = Get-SPCGuestAccess -SiteUrl "https://test" 2>$null
             
             Assert-MockCalled Invoke-SPCGraphBatch -Times 1
         }
@@ -365,7 +365,7 @@ Describe "Get-SPCGuestAccess" {
                 throw "429 Too Many Requests"
             }
 
-            $result = Get-SPCGuestAccess -SiteUrl "https://test"
+            $result = Get-SPCGuestAccess -SiteUrl "https://test" 2>$null
             
             Assert-MockCalled Invoke-SPCGraphBatch -Times 5
             Assert-MockCalled Start-Sleep -Times 5
