@@ -49,12 +49,12 @@ try {
 
     Write-Host "Running Get-SPCPrivilegedUser scan..."
     "Scanning privileged users..." | Out-File -FilePath $logFile -Append
-    $privileged = @(Get-SPCPrivilegedUser -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $TenantName -ErrorAction SilentlyContinue)
+    $privileged = @(Get-SPCPrivilegedUser -ErrorAction SilentlyContinue)
     "Privileged users found: $($privileged.Count)" | Out-File -FilePath $logFile -Append
 
     Write-Host "Running Get-SPCOverPermissionedUser scan..."
     "Scanning over-permissioned users..." | Out-File -FilePath $logFile -Append
-    $overPermissioned = @(Get-SPCOverPermissionedUser -ClientId $ClientId -Thumbprint $Thumbprint -Tenant $TenantName -ErrorAction SilentlyContinue)
+    $overPermissioned = @(Get-SPCOverPermissionedUser -ErrorAction SilentlyContinue)
     "Over-permissioned users found: $($overPermissioned.Count)" | Out-File -FilePath $logFile -Append
 
     Write-Host "Running Get-SPCMismatchUser scan..."

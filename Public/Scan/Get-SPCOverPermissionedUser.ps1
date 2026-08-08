@@ -10,23 +10,14 @@ function Get-SPCOverPermissionedUser {
         Flags users with an EAS greater than 100 with a Red Alert.
     
     .EXAMPLE
-        Get-SPCOverPermissionedUser -ClientId "app-id" -Thumbprint "cert-thumb" -Tenant "tenant.onmicrosoft.com"
+        Get-SPCOverPermissionedUser
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param (
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [string]$SiteUrl,
-
-        [Parameter(Mandatory = $false)]
-        [string]$ClientId,
-
-        [Parameter(Mandatory = $false)]
-        [string]$Thumbprint,
-
-        [Parameter(Mandatory = $false)]
-        [string]$Tenant
+        [string]$SiteUrl
     )
 
     begin {

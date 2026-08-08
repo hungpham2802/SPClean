@@ -9,23 +9,14 @@ function Get-SPCPrivilegedUser {
         It aggregates this data by UserPrincipalName and returns the top 20 users with the most privileged access.
     
     .EXAMPLE
-        Get-SPCPrivilegedUser -ClientId "app-id" -Thumbprint "cert-thumb" -Tenant "tenant.onmicrosoft.com"
+        Get-SPCPrivilegedUser
     #>
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param (
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [string]$SiteUrl,
-
-        [Parameter(Mandatory = $false)]
-        [string]$ClientId,
-
-        [Parameter(Mandatory = $false)]
-        [string]$Thumbprint,
-
-        [Parameter(Mandatory = $false)]
-        [string]$Tenant
+        [string]$SiteUrl
     )
 
     begin {

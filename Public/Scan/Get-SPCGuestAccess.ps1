@@ -28,9 +28,6 @@ function Get-SPCGuestAccess {
         
         Test-SPCConnection
 
-        $clientId = $null
-        $tenantId = $null
-        $thumbprint = $null
         $connectToSite = {
             param([string] $SiteUrl, [PSCustomObject] $Ctx)
             $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }

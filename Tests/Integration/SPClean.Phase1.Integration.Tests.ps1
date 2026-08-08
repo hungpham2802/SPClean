@@ -66,7 +66,7 @@ Describe 'Phase 1 Features - Real Tenant Scan' {
 
     Context 'Get-SPCPrivilegedUser' {
         It 'Returns privileged users without throwing errors' {
-            $script:privileged = @(Get-SPCPrivilegedUser -ClientId $script:clientId -Thumbprint $script:thumbprint -Tenant $script:tenantName -ErrorAction Stop)
+            $script:privileged = @(Get-SPCPrivilegedUser -ErrorAction Stop)
             $script:privileged.Count | Should -BeGreaterOrEqual 0
         }
         It 'Outputs objects of type SPC.PrivilegedUser' {
@@ -78,7 +78,7 @@ Describe 'Phase 1 Features - Real Tenant Scan' {
 
     Context 'Get-SPCOverPermissionedUser' {
         It 'Returns over-permissioned users without throwing errors' {
-            $script:overPermissioned = @(Get-SPCOverPermissionedUser -ClientId $script:clientId -Thumbprint $script:thumbprint -Tenant $script:tenantName -ErrorAction Stop)
+            $script:overPermissioned = @(Get-SPCOverPermissionedUser -ErrorAction Stop)
             $script:overPermissioned.Count | Should -BeGreaterOrEqual 0
         }
         It 'Outputs objects of type SPC.OverPermissionedUser' {
