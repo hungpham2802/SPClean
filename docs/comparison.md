@@ -6,17 +6,17 @@ How SPClean compares to Syskit Point and hand-rolled PowerShell scripts for dete
 
 ## Feature comparison
 
-| Feature | SPClean Free | SPClean Pro | Syskit Point | Manual scripting |
-| --- | :---: | :---: | :---: | :---: |
-| **Orphaned user detection** | ✅ | ✅ | ✅ | ⚠ custom code required |
-| **Risk scoring (HIGH / MEDIUM / LOW)** | ✅ | ✅ | — | — |
-| **HTML report** | — | ✅ | ✅ web UI | — |
-| **WhatIf / dry-run** | ✅ | ✅ | — | ⚠ manual implementation |
-| **Snapshot & restore** | — | ✅ | ✅ permission history | — |
-| **Scheduled / unattended scan** | — | ✅ | ✅ continuous | ⚠ manual Task Scheduler setup |
-| **Pricing** | $0 | $79 / tenant / year | per-user SaaS (varies) | free (time investment) |
-| **PowerShell pipeline support** | ✅ | ✅ | — | ✅ |
-| **Air-gapped / offline operation** | ✅ | ✅ | — | ✅ |
+| Feature                                      | SPClean Free |     SPClean Pro     |      Syskit Point      |        Manual scripting        |
+| -------------------------------------------- | :----------: | :------------------: | :--------------------: | :----------------------------: |
+| **Orphaned user detection**            |      ✅      |          ✅          |           ✅           |    ⚠ custom code required    |
+| **Risk scoring (HIGH / MEDIUM / LOW)** |      ✅      |          ✅          |           —           |               —               |
+| **HTML report**                        |      —      |          ✅          |       ✅ web UI       |               —               |
+| **WhatIf / dry-run**                   |      ✅      |          ✅          |           —           |    ⚠ manual implementation    |
+| **Snapshot & restore**                 |      —      |          ✅          | ✅ permission history |               —               |
+| **Scheduled / unattended scan**        |      —      |          ✅          |     ✅ continuous     | ⚠ manual Task Scheduler setup |
+| **Pricing**                            |      $0      | $199 / tenant / year | per-user SaaS (varies) |     free (time investment)     |
+| **PowerShell pipeline support**        |      ✅      |          ✅          |           —           |               ✅               |
+| **Air-gapped / offline operation**     |      ✅      |          ✅          |           —           |               ✅               |
 
 ⚠ = partial support; — = not available
 
@@ -34,12 +34,12 @@ How SPClean compares to Syskit Point and hand-rolled PowerShell scripts for dete
 
 ## When to use each
 
-| Scenario | Recommendation |
-| --- | --- |
-| Occasional cleanup of a single tenant | SPClean Free |
-| Regular scans with HTML reporting and snapshot backup | SPClean Pro |
-| Full M365 governance (Teams, lifecycle, reviews) across many tenants | Syskit Point |
-| Unique requirements that no existing tool covers | Manual scripting, or use SPClean as a base |
+| Scenario                                                             | Recommendation                             |
+| -------------------------------------------------------------------- | ------------------------------------------ |
+| Occasional cleanup of a single tenant                                | SPClean Free                               |
+| Regular scans with HTML reporting and snapshot backup                | SPClean Pro                                |
+| Full M365 governance (Teams, lifecycle, reviews) across many tenants | Syskit Point                               |
+| Unique requirements that no existing tool covers                     | Manual scripting, or use SPClean as a base |
 
 ---
 
