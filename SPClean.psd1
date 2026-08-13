@@ -28,6 +28,9 @@
         'Get-SPCGuestAccess'
         'Get-SPCPrivilegedUser'
         'Get-SPCOverPermissionedUser'
+        'Get-SPCPermissionHealthScore'
+        'Get-SPCBrokenInheritance'
+        'Compare-SPCPermissionSnapshot', 'Invoke-SPCDashboardReportV1', 'Invoke-SPCPermissionAnalyticsV2'
     )
 
     CmdletsToExport   = @()
@@ -86,3 +89,4 @@
         }
     }
 }
+

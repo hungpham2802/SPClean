@@ -1,13 +1,18 @@
 function Get-SPCOverPermissionedUser {
     <#
     .SYNOPSIS
-        Identifies over-permissioned users based on an Excessive Access Score (EAS).
+        Identifies over-permissioned users based on an Excessive Access Score (EAS) (Focus on Breadth of Access).
     
     .DESCRIPTION
-        Scans site collections to determine user access levels (Full Control, Edit, Read).
+        Scans site collections to determine user access levels.
         Calculates the Excessive Access Score (EAS) using the formula:
         EAS = (Full Control * 3) + (Edit * 2) + (Read * 1)
         Flags users with an EAS greater than 100 with a Red Alert.
+        
+        Concept: Over-Permissioned Users focus on "Breadth of Access" or "Blast Radius" (Chiều rộng quyền hạn).
+        Risk: These users have access to a vast amount of resources across the tenant, increasing the risk of widespread data leakage or ransomware infection (data infection) if compromised.
+        
+        Note: This cmdlet may miss Site Collection Administrators (SCA) because it relies on standard Role Assignments, which do not always enumerate SCAs explicitly.
     
     .EXAMPLE
         Get-SPCOverPermissionedUser
@@ -39,17 +44,20 @@ function Get-SPCOverPermissionedUser {
                             -Tenant $tenantId `
                             -CertificatePath $Ctx._CertificatePath `
                             -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    } elseif ($Ctx._CertificateThumbprint) {
+                    }
+                    elseif ($Ctx._CertificateThumbprint) {
                         Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
                             -Tenant $tenantId `
                             -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    } else {
+                    }
+                    else {
                         $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
                         try {
                             $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
                             Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
                                 -ClientSecret $plain -ReturnConnection
-                        } finally {
+                        }
+                        finally {
                             [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
                             $plain = $null
                         }
@@ -65,7 +73,8 @@ function Get-SPCOverPermissionedUser {
             $sitesToScan = @()
             if ($SiteUrl) {
                 $sitesToScan += $SiteUrl
-            } else {
+            }
+            else {
                 Write-Verbose "Fetching all tenant sites..."
                 $sitesToScan = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext | Select-Object -ExpandProperty Url
             }
@@ -96,22 +105,25 @@ function Get-SPCOverPermissionedUser {
                                     $accessLevel = "None"
                                     if ($roles -contains "Full Control") {
                                         $accessLevel = "Full Control"
-                                    } elseif ($roles -contains "Edit" -or $roles -contains "Contribute") {
+                                    }
+                                    elseif ($roles -contains "Edit" -or $roles -contains "Contribute") {
                                         $accessLevel = "Edit"
-                                    } elseif ($roles -contains "Read" -or $roles -contains "View Only") {
+                                    }
+                                    elseif ($roles -contains "Read" -or $roles -contains "View Only") {
                                         $accessLevel = "Read"
                                     }
                                     
                                     if ($accessLevel -ne "None") {
                                         $tempResults.Add([PSCustomObject]@{
-                                            UPN = $upn
-                                            AccessLevel = $accessLevel
-                                        })
+                                                UPN         = $upn
+                                                AccessLevel = $accessLevel
+                                            })
                                     }
                                 }
                             }
                             $success = $true
-                        } catch {
+                        }
+                        catch {
                             $ex = $_.Exception
                             if ($ex.Message -match '429|503' -or $_.FullyQualifiedErrorId -match '429|503') {
                                 $retryCount++
@@ -122,7 +134,8 @@ function Get-SPCOverPermissionedUser {
                                 
                                 if ($retryAfter) {
                                     $waitTime = [int]$retryAfter
-                                } else {
+                                }
+                                else {
                                     $waitTime = [Math]::Pow(2, $retryCount)
                                 }
                                 
@@ -131,13 +144,15 @@ function Get-SPCOverPermissionedUser {
                                 if ($retryCount -eq $maxRetries) {
                                     Write-Error "[ERR-GOPU-001] $(Get-Date -Format 'o'): Failed to process site collection '$url' after $maxRetries attempts due to throttling. Resource: $url." -ErrorAction Continue
                                 }
-                            } else {
+                            }
+                            else {
                                 Write-Error "[ERR-GOPU-002] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($ex.Message)" -ErrorAction Continue
                                 $success = $true
                             }
                         }
                     }
-                } catch {
+                }
+                catch {
                     Write-Error "[ERR-GOPU-003] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($_.Exception.Message)" -ErrorAction Continue
                 }
             }
@@ -155,12 +170,12 @@ function Get-SPCOverPermissionedUser {
                     $isRedAlert = $eas -gt 100
                     
                     $obj = [PSCustomObject]@{
-                        UPN = $g.Name
+                        UPN              = $g.Name
                         FullControlCount = $fullControlCount
-                        EditCount = $editCount
-                        ReadCount = $readCount
-                        EAS = $eas
-                        IsRedAlert = $isRedAlert
+                        EditCount        = $editCount
+                        ReadCount        = $readCount
+                        EAS              = $eas
+                        IsRedAlert       = $isRedAlert
                     }
                     $obj.PSObject.TypeNames.Insert(0, 'SPC.OverPermissionedUser')
                     $obj
@@ -169,11 +184,13 @@ function Get-SPCOverPermissionedUser {
                 $sorted = $finalResults | Sort-Object -Property EAS -Descending
                 $foundCount = $sorted.Count
                 Write-Output $sorted
-            } else {
+            }
+            else {
                 Write-Verbose "No users found."
                 Write-Output @()
             }
-        } catch {
+        }
+        catch {
             $errCode = "ERR-AUTH-001"
             $exMsg = "[$errCode] $(Get-Date -Format 'yyyy-MM-dd HH:mm:ssZ'): Terminating error occurred. $($_.Exception.Message)"
             Write-Error -Message $exMsg -Exception $_.Exception -ErrorId $errCode -ErrorAction Stop

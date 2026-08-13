@@ -1,4 +1,4 @@
-﻿#Requires -Version 7.0
+#Requires -Version 7.0
 
 # Module-scoped connection state — set by Connect-SPCTenant, cleared by Disconnect-SPCTenant
 $script:SPCContext = $null
@@ -28,5 +28,11 @@ Export-ModuleMember -Function (
     'Repair-SPCMismatchUser',
     'Get-SPCGuestAccess',
     'Get-SPCPrivilegedUser',
-    'Get-SPCOverPermissionedUser'
+    'Get-SPCOverPermissionedUser',
+    'Get-SPCPermissionHealthScore',
+    'Get-SPCBrokenInheritance',
+    'Compare-SPCPermissionSnapshot',
+    'Invoke-SPCDashboardReportV1',
+    'Invoke-SPCPermissionAnalyticsV2'
 )
+

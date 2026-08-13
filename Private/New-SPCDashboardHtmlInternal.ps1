@@ -1,4 +1,4 @@
-﻿function New-SPCDashboardHtmlInternal {
+function New-SPCDashboardHtmlInternal {
     <#
     .SYNOPSIS
         Generates an offline HTML Dashboard for SPClean (Permission Health Dashboard v1.5).
@@ -357,13 +357,24 @@
                 <h3>Over-Permissioned Users (EAS)</h3>
                 <table class="overperm-table">
                     <thead>
-                        <tr><th>UPN</th><th>Full Control Count</th><th>Edit Count</th><th>Read Count</th><th>EAS Score</th><th>Red Alert Badge</th></tr>
+                        <tr><th>UPN</th><th>Full Control Count</th><th>Edit Count</th><th>Read Count</th><th>EAS Score <span class="tooltip-icon">?<span class="tooltip-text"><strong>EAS (Effective Access Score)</strong><br>Full Control x3 + Edit x2 + Read x1</span></span></th><th>Red Alert Badge</th></tr>
                     </thead>
                     <tbody>
                         $overPermissionedRows
                     </tbody>
                 </table>
             </div>
+        </div>
+        
+        <!-- Explanations & Recommendations -->
+        <div class="data-table-wrap" style="background: #eef2f5;">
+            <h3>Explanations & Recommendations</h3>
+            <p><strong>Privileged vs Over-Permissioned:</strong><br>
+            - <strong>Privileged Users:</strong> Users with legitimate high-level access (e.g., SharePoint Admins, Site Collection Admins) across many sites.<br>
+            - <strong>Over-Permissioned Users:</strong> Users who have accumulated excessive permissions over time (high EAS) but may not necessarily be administrators, increasing the risk of accidental or malicious data exposure.</p>
+            <p><strong>Next Actions:</strong><br>
+            - Implement <strong>PIM/JIT (Privileged Identity Management / Just-In-Time)</strong> for Privileged Users (Admins) to ensure they only have admin rights when needed.<br>
+            - Conduct an <strong>Access Review</strong> for Over-Permissioned Users to validate their current access needs and revoke unnecessary permissions.</p>
         </div>
     </div>
     

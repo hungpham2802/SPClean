@@ -1,12 +1,15 @@
 function Get-SPCPrivilegedUser {
     <#
     .SYNOPSIS
-        Gets the top 20 privileged users across the SharePoint tenant.
+        Gets the top 20 privileged users across the SharePoint tenant (Focus on Depth of Access).
     
     .DESCRIPTION
         This cmdlet scans all site collections to identify users who are Site Collection Administrators,
         members of the default Owners group, or have direct 'Full Control' assignments. 
         It aggregates this data by UserPrincipalName and returns the top 20 users with the most privileged access.
+        
+        Concept: Privileged Users focus on "Depth of Access".
+        Risk: These users have the highest level of control over specific resources, posing a severe risk of system compromise, configuration changes, or "admin theft" if their accounts are compromised.
     
     .EXAMPLE
         Get-SPCPrivilegedUser
@@ -40,17 +43,20 @@ function Get-SPCPrivilegedUser {
                             -Tenant $tenantId `
                             -CertificatePath $Ctx._CertificatePath `
                             -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    } elseif ($Ctx._CertificateThumbprint) {
+                    }
+                    elseif ($Ctx._CertificateThumbprint) {
                         Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
                             -Tenant $tenantId `
                             -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    } else {
+                    }
+                    else {
                         $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
                         try {
                             $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
                             Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
                                 -ClientSecret $plain -ReturnConnection
-                        } finally {
+                        }
+                        finally {
                             [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
                             $plain = $null
                         }
@@ -65,7 +71,8 @@ function Get-SPCPrivilegedUser {
             $sitesToScan = @()
             if ($SiteUrl) {
                 $sitesToScan += $SiteUrl
-            } else {
+            }
+            else {
                 Write-Verbose "Fetching all tenant sites..."
                 $sitesToScan = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext | Select-Object -ExpandProperty Url
             }
@@ -93,10 +100,10 @@ function Get-SPCPrivilegedUser {
                                 if (-not [string]::IsNullOrEmpty($sca.LoginName) -and $sca.LoginName -match "\|membership\|") {
                                     $upn = $sca.LoginName.Split("|")[-1]
                                     $tempResults.Add([PSCustomObject]@{
-                                        UPN = $upn
-                                        SiteUrl = $url
-                                        PermissionSource = "SCA"
-                                    })
+                                            UPN              = $upn
+                                            SiteUrl          = $url
+                                            PermissionSource = "SCA"
+                                        })
                                 }
                             }
 
@@ -108,10 +115,10 @@ function Get-SPCPrivilegedUser {
                                     if (-not [string]::IsNullOrEmpty($member.LoginName) -and $member.LoginName -match "\|membership\|") {
                                         $upn = $member.LoginName.Split("|")[-1]
                                         $tempResults.Add([PSCustomObject]@{
-                                            UPN = $upn
-                                            SiteUrl = $url
-                                            PermissionSource = "Owner"
-                                        })
+                                                UPN              = $upn
+                                                SiteUrl          = $url
+                                                PermissionSource = "Owner"
+                                            })
                                     }
                                 }
                             }
@@ -125,16 +132,17 @@ function Get-SPCPrivilegedUser {
                                     if ($ra.Member.PrincipalType -in 'User', 1 -and $ra.Member.LoginName -match "\|membership\|") {
                                         $upn = $ra.Member.LoginName.Split("|")[-1]
                                         $tempResults.Add([PSCustomObject]@{
-                                            UPN = $upn
-                                            SiteUrl = $url
-                                            PermissionSource = "Direct"
-                                        })
+                                                UPN              = $upn
+                                                SiteUrl          = $url
+                                                PermissionSource = "Direct"
+                                            })
                                     }
                                 }
                             }
                             
                             $success = $true
-                        } catch {
+                        }
+                        catch {
                             $ex = $_.Exception
                             if ($ex.Message -match '429|503' -or $_.FullyQualifiedErrorId -match '429|503') {
                                 $retryCount++
@@ -145,7 +153,8 @@ function Get-SPCPrivilegedUser {
                                 
                                 if ($retryAfter) {
                                     $waitTime = [int]$retryAfter
-                                } else {
+                                }
+                                else {
                                     $waitTime = [Math]::Pow(2, $retryCount)
                                 }
                                 
@@ -154,13 +163,15 @@ function Get-SPCPrivilegedUser {
                                 if ($retryCount -eq $maxRetries) {
                                     Write-Error "[ERR-GPU-001] $(Get-Date -Format 'o'): Failed to process site collection '$url' after $maxRetries attempts due to throttling. Resource: $url." -ErrorAction Continue
                                 }
-                            } else {
+                            }
+                            else {
                                 Write-Error "[ERR-GPU-002] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($ex.Message)" -ErrorAction Continue
                                 $success = $true # break out of retry loop for non-throttling errors
                             }
                         }
                     }
-                } catch {
+                }
+                catch {
                     Write-Error "[ERR-GPU-003] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($_.Exception.Message)" -ErrorAction Continue
                 }
             }
@@ -171,9 +182,9 @@ function Get-SPCPrivilegedUser {
                 $grouped = $tempResults | Group-Object -Property UPN
                 $finalResults = foreach ($g in $grouped) {
                     $obj = [PSCustomObject]@{
-                        UPN = $g.Name
-                        SiteCount = $g.Count
-                        Sites = $g.Group.SiteUrl | Select-Object -Unique
+                        UPN               = $g.Name
+                        SiteCount         = $g.Count
+                        Sites             = $g.Group.SiteUrl | Select-Object -Unique
                         PermissionSources = $g.Group.PermissionSource | Select-Object -Unique
                     }
                     $obj.PSObject.TypeNames.Insert(0, 'SPC.PrivilegedUser')
@@ -184,11 +195,13 @@ function Get-SPCPrivilegedUser {
                 if ($top20.Count -gt 20) { $top20 = $top20[0..19] }
                 $foundCount = $top20.Count
                 Write-Output $top20
-            } else {
+            }
+            else {
                 Write-Verbose "No privileged users found."
                 Write-Output @()
             }
-        } catch {
+        }
+        catch {
             $errCode = "ERR-AUTH-001"
             $exMsg = "[$errCode] $(Get-Date -Format 'yyyy-MM-dd HH:mm:ssZ'): Terminating error occurred. $($_.Exception.Message)"
             Write-Error -Message $exMsg -Exception $_.Exception -ErrorId $errCode -ErrorAction Stop
