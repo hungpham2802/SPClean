@@ -142,9 +142,12 @@ function Get-SPCStorageWaste {
                 $siteConn = Connect-SPCSiteInternal -SiteUrl $url -Context $script:SPCContext
                 $web = Get-PnPWeb -Connection $siteConn
                 $site = Get-PnPSite -Connection $siteConn
+                if ($null -ne $site -and ($null -eq $site.Usage -or $null -eq $site.Usage.Storage)) {
+                    Get-PnPProperty -ClientObject $site -Property Usage -Connection $siteConn -ErrorAction SilentlyContinue | Out-Null
+                }
 
-                $storageUsedMB = [Math]::Round(($site.Usage.Storage / 1MB), 2)
-                $storageAllocatedMB = [Math]::Round(($site.Usage.StorageQuota / 1MB), 2)
+                $storageUsedMB = if ($null -ne $site.Usage -and $null -ne $site.Usage.Storage) { [Math]::Round(($site.Usage.Storage / 1MB), 2) } else { 0.0 }
+                $storageAllocatedMB = if ($null -ne $site.Usage -and $null -ne $site.Usage.StorageQuota) { [Math]::Round(($site.Usage.StorageQuota / 1MB), 2) } else { 0.0 }
                 $storageUsedPercent = if ($storageAllocatedMB -gt 0) { [Math]::Round(($storageUsedMB / $storageAllocatedMB) * 100, 2) } else { 0.0 }
 
                 # 1. Recycle Bin

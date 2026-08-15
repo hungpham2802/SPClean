@@ -111,6 +111,9 @@ function Get-SPCPreservationHoldWaste {
                 }
 
                 $site = Get-PnPSite -Connection $siteConn
+                if ($null -ne $site -and ($null -eq $site.Usage -or $null -eq $site.Usage.Storage)) {
+                    Get-PnPProperty -ClientObject $site -Property Usage -Connection $siteConn -ErrorAction SilentlyContinue | Out-Null
+                }
                 $storageBytes = if ($null -ne $site -and $null -ne $site.Usage -and $null -ne $site.Usage.Storage) { [int64]$site.Usage.Storage } else { [int64]0 }
                 $totalSiteMB = [Math]::Round(($storageBytes / 1MB), 2)
 
