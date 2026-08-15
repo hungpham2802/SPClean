@@ -115,6 +115,9 @@ function Get-SPCGraphSiteUsageInternal {
 
                     $fallbackResult = [System.Collections.Generic.List[PSCustomObject]]::new()
                     foreach ($ts in $tenantSites) {
+                        if ($ts.Template -like 'REDIRECTSITE#*' -or $ts.Template -like 'POINTPUBLISHINGHUB#*') {
+                            continue
+                        }
                         $mb = [Math]::Round(($ts.StorageUsageCurrent), 2)
                         $fallbackResult.Add([PSCustomObject]@{
                             SiteUrl          = $ts.Url

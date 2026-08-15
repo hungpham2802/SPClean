@@ -38,14 +38,24 @@ function Connect-SPCSiteInternal {
 
         switch ($authMode) {
             'Interactive' {
-                $token = if ($Context.GraphAccessToken) {
-                    $Context.GraphAccessToken
-                } elseif ($Context.PnPContext) {
-                    Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Context.PnPContext
-                } else {
-                    Get-PnPAccessToken -ResourceTypeName SharePoint
+                $token = $null
+                try {
+                    $token = if ($Context.PnPContext) {
+                        Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Context.PnPContext -ErrorAction Stop
+                    } else {
+                        Get-PnPAccessToken -ResourceTypeName SharePoint -ErrorAction Stop
+                    }
+                } catch {
+                    $token = $Context.GraphAccessToken
                 }
-                Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
+                
+                if (-not [string]::IsNullOrWhiteSpace($token)) {
+                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
+                } elseif ($Context._ClientId) {
+                    Connect-PnPOnline -Url $SiteUrl -Interactive -ClientId $Context._ClientId -ReturnConnection
+                } else {
+                    Connect-PnPOnline -Url $SiteUrl -AccessToken $Context.GraphAccessToken -ReturnConnection
+                }
             }
             'AppOnly' {
                 $clientId = if ($Context.ClientId) { $Context.ClientId } else { $Context._ClientId }

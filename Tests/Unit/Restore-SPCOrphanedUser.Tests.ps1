@@ -5,6 +5,7 @@ BeforeAll {
     $publicDir  = Join-Path $moduleRoot 'Public'
     $privateDir = Join-Path $moduleRoot 'Private'
 
+    . (Join-Path $privateDir 'PnPWrappers.ps1')
     . (Join-Path $privateDir 'Test-SPCConnection.ps1')
     . (Join-Path $privateDir 'LicenseManager.ps1')
     if (Test-Path (Join-Path $privateDir 'Connect-SPCSiteInternal.ps1')) {
