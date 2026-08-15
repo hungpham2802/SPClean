@@ -1,7 +1,12 @@
-﻿function Save-SPCPermissionSnapshot {
+function Save-SPCPermissionSnapshot {
     <#
     .SYNOPSIS
-        Saves a JSON snapshot of a user's permissions before removal per SRS 6.2.
+        Saves a JSON snapshot of a user's permissions before removal per SRS 6.2 (Schema v1.1).
+    .DESCRIPTION
+        Serializes user permissions and group memberships to JSON snapshot format v1.1.
+        Supports empty permission sets via isEmptyPermissionSet boolean flag and empty array [].
+    .OUTPUTS
+        [System.IO.FileInfo]
     #>
     [CmdletBinding()]
     [OutputType([System.IO.FileInfo])]
@@ -42,25 +47,23 @@
         $groupList = [System.Collections.Generic.List[object]]::new()
         if ($GroupMemberships) { foreach ($g in $GroupMemberships) { $groupList.Add($g) } }
 
-        # PS 5.1 ConvertFrom-Json converts empty JSON array [] to $null (E013).
-        # A sentinel entry keeps the array non-null; Restore-SPCOrphanedUser skips blank entries.
-        if ($permList.Count -eq 0) {
-            $permList.Add([ordered]@{ scope = ''; permissionLevel = ''; inheritanceStatus = '__empty' })
-        }
+        $isEmpty = ($permList.Count -eq 0)
 
-        # SRS 6.2 schema
+        # SRS 6.2 schema v1.1
         $snapshot = [ordered]@{
-            snapshotVersion  = '1.0'
-            createdAt        = (Get-Date).ToUniversalTime().ToString('o')
-            tenantName       = $TenantName
-            siteUrl          = $SiteUrl
-            user             = [ordered]@{
+            '$schema'            = 'https://m365automation.com/schemas/spclean/snapshot-v1.1.json'
+            snapshotVersion      = '1.1'
+            createdAt            = (Get-Date).ToUniversalTime().ToString('o')
+            tenantName           = $TenantName
+            siteUrl              = $SiteUrl
+            user                 = [ordered]@{
                 loginName   = $UserLoginName
                 displayName = $UserDisplayName
                 upn         = $UserUPN
             }
-            permissions      = $permList
-            groupMemberships = $groupList
+            isEmptyPermissionSet = $isEmpty
+            permissions          = $permList
+            groupMemberships     = $groupList
         }
 
         if (-not (Test-Path -Path $SnapshotPath)) {

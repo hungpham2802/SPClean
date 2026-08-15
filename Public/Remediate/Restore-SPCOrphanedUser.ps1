@@ -1,19 +1,33 @@
-﻿# PnP 3.x removed Add-PnPRoleAssignment; wrap Set-PnPWebPermission -AddRole.
-if (-not (Get-Command -Name 'Add-PnPRoleAssignment' -ErrorAction SilentlyContinue)) {
-    function Add-PnPRoleAssignment {
-        [CmdletBinding()]
-        param(
-            [string]  $LoginName,
-            [string]  $RoleDefinitionName,
-            [int]     $RoleDefinitionId,
-            [Parameter()] [object] $Connection
-        )
-        if (-not [string]::IsNullOrWhiteSpace($RoleDefinitionName)) {
-            Set-PnPWebPermission -User $LoginName -AddRole $RoleDefinitionName -Connection $Connection -ErrorAction Stop
-        } else {
-            $rd = Get-PnPRoleDefinition -Identity $RoleDefinitionId -Connection $Connection -ErrorAction Stop
-            Set-PnPWebPermission -User $LoginName -AddRole $rd.Name -Connection $Connection -ErrorAction Stop
-        }
+# PS wrappers with [object] Connection so Pester mocks don't enforce PnPConnection type coercion.
+if (Get-Command -Name 'Get-PnPWeb' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+    $__pnpGetWeb = Get-Command 'Get-PnPWeb' -Module PnP.PowerShell
+    function Get-PnPWeb {
+        [CmdletBinding()] param([object]$Connection)
+        & $__pnpGetWeb @PSBoundParameters
+    }
+}
+if (Get-Command -Name 'Add-PnPGroupMember' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+    $__pnpAddGroupMember = Get-Command 'Add-PnPGroupMember' -Module PnP.PowerShell
+    function Add-PnPGroupMember {
+        [CmdletBinding()] param([string]$LoginName, [object]$Group, [object]$Connection)
+        & $__pnpAddGroupMember @PSBoundParameters
+    }
+}
+
+# PnP 3.x removed Add-PnPRoleAssignment; wrap Set-PnPWebPermission -AddRole.
+function Add-PnPRoleAssignment {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [string] $LoginName,
+        [Parameter()] [string] $RoleDefinitionName,
+        [Parameter()] [int]    $RoleDefinitionId,
+        [Parameter()] [object] $Connection
+    )
+    if (-not [string]::IsNullOrWhiteSpace($RoleDefinitionName)) {
+        Set-PnPWebPermission -User $LoginName -AddRole $RoleDefinitionName -Connection $Connection -ErrorAction Stop
+    } else {
+        $rd = Get-PnPRoleDefinition -Identity $RoleDefinitionId -Connection $Connection -ErrorAction Stop
+        Set-PnPWebPermission -User $LoginName -AddRole $rd.Name -Connection $Connection -ErrorAction Stop
     }
 }
 
@@ -23,9 +37,11 @@ function Restore-SPCOrphanedUser {
         Restores a previously removed user's permissions from a JSON snapshot per SRS 3.4.2.
     .DESCRIPTION
         Reads a snapshot file created by Remove-SPCOrphanedUser -CreateSnapshot and re-applies
-        all recorded permission assignments to the target site. For disaster recovery only.
+        all recorded permission assignments to the target site. Supports both v1.0 and v1.1 snapshots.
     .PARAMETER SnapshotPath
         Path to the JSON snapshot file. The siteUrl and user identity are read from the file.
+    .PARAMETER AddTempSiteCollectionAdmin
+        Temporarily add executor as Site Collection Administrator if access is denied.
     .EXAMPLE
         Restore-SPCOrphanedUser -SnapshotPath C:\Snapshots\jdoe_20260622T120000Z.json
     .EXAMPLE
@@ -59,7 +75,7 @@ function Restore-SPCOrphanedUser {
         $snap    = $snapRaw | ConvertFrom-Json
 
         if ($null -eq $snap.user -or [string]::IsNullOrWhiteSpace($snap.siteUrl)) {
-            throw "Restore-SPCOrphanedUser: Snapshot '$resolvedSnap' is missing required fields (user, siteUrl). Expected snapshotVersion 1.0 format."
+            throw "Restore-SPCOrphanedUser: Snapshot '$resolvedSnap' is missing required fields (user, siteUrl). Expected snapshotVersion 1.0 or 1.1 format."
         }
 
         $loginName   = $snap.user.loginName
@@ -67,10 +83,13 @@ function Restore-SPCOrphanedUser {
         $upn         = $snap.user.upn
         $siteUrl     = $snap.siteUrl
 
-        # PS 5.1: ConvertFrom-Json converts empty JSON array [] to $null; @($null) creates a
-        # 1-element null array that would count as 1 failed permission. Filter nulls explicitly.
-        $permissions = @($snap.permissions | Where-Object { $null -ne $_ })
-        $groupMemberships = if ($null -ne $snap.groupMemberships) { @($snap.groupMemberships | Where-Object { $null -ne $_ }) } else { @() }
+        # Support both v1.0 (__empty sentinel) and v1.1 (empty array / isEmptyPermissionSet)
+        $permissions = @($snap.permissions | Where-Object {
+            $null -ne $_ -and $_.inheritanceStatus -ne '__empty' -and -not [string]::IsNullOrWhiteSpace($_.permissionLevel)
+        })
+        $groupMemberships = if ($null -ne $snap.groupMemberships) {
+            @($snap.groupMemberships | Where-Object { $null -ne $_ -and -not [string]::IsNullOrWhiteSpace($_.groupName) })
+        } else { @() }
 
         if ($permissions.Count -eq 0 -and $groupMemberships.Count -eq 0) {
             # Nothing recorded in snapshot → vacuously successful (no permissions to restore)
@@ -105,54 +124,20 @@ function Restore-SPCOrphanedUser {
                 ErrorMessage        = $null
                 RestoredAt          = $null
             }
-            $out.PSObject.TypeNames.Insert(0, 'SPC.RestoreResult')
-            $out
+            $preview.PSObject.TypeNames.Insert(0, 'SPC.RestoreResult')
+            $preview
             return
         }
 
         if (-not $PSCmdlet.ShouldProcess("$upn at $siteUrl", 'Restore-SPCOrphanedUser')) { return }
 
-        # Per-site connection (same pattern as other cmdlets)
-        $ctx           = $script:SPCContext
-        $connectToSite = {
-            param([string] $Url, [PSCustomObject] $Ctx)
-            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
-            switch ($Ctx.AuthMethod) {
-                'Interactive' {
-                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
-                    Connect-PnPOnline -Url $Url -AccessToken $token -ReturnConnection
-                }
-                'AppOnly' {
-                    if ($Ctx._CertificatePath) {
-                        Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -CertificatePath $Ctx._CertificatePath `
-                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    } elseif ($Ctx._CertificateThumbprint) {
-                        Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    } else {
-                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
-                        try {
-                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                            Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
-                                -ClientSecret $plain -ReturnConnection
-                        } finally {
-                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-                            $plain = $null
-                        }
-                    }
-                }
-            }
-        }
-
+        $ctx = $script:SPCContext
         $removeSca = $false
         $myUPN = $null
 
         try {
             try {
-                $siteConn = & $connectToSite -Url $siteUrl -Ctx $ctx
+                $siteConn = Connect-SPCSiteInternal -SiteUrl $siteUrl -Context $ctx
                 try {
                     Get-PnPWeb -Connection $siteConn -ErrorAction Stop | Out-Null
                 } catch [System.UnauthorizedAccessException], [System.Exception] {
@@ -170,7 +155,7 @@ function Restore-SPCOrphanedUser {
                             $removeSca = $true
                             
                             Start-Sleep -Seconds 5
-                            $siteConn = & $connectToSite -Url $siteUrl -Ctx $ctx
+                            $siteConn = Connect-SPCSiteInternal -SiteUrl $siteUrl -Context $ctx
                         } else {
                             Write-Warning "Restore-SPCOrphanedUser: Access Denied on $siteUrl. You must be a Site Collection Administrator or use -AddTempSiteCollectionAdmin."
                             throw "Access Denied"
@@ -183,67 +168,65 @@ function Restore-SPCOrphanedUser {
                 throw "Restore-SPCOrphanedUser: Cannot connect to '$siteUrl' or access denied. $_"
             }
 
-        $restoredCount = 0
-        $failedCount   = 0
-        $errMsgs       = [System.Collections.Generic.List[string]]::new()
+            $restoredCount = 0
+            $failedCount   = 0
+            $errMsgs       = [System.Collections.Generic.List[string]]::new()
 
-        foreach ($perm in $permissions) {
-            $level = if ($null -ne $perm.permissionLevel) { [string]$perm.permissionLevel } else { '' }
-            if ([string]::IsNullOrWhiteSpace($level)) {
-                # Blank permissionLevel = sentinel or group-derived entry; not a real failure
-                Write-Verbose "Restore-SPCOrphanedUser: Skipping blank permissionLevel entry for $upn"
-                continue
-            }
-
-            try {
-                # Use numeric ID path or name path based on stored value
-                if ($level -match '^\d+$') {
-                    Add-PnPRoleAssignment -LoginName $loginName -RoleDefinitionId ([int]$level) `
-                        -Connection $siteConn -ErrorAction Stop
-                } else {
-                    Add-PnPRoleAssignment -LoginName $loginName -RoleDefinitionName $level `
-                        -Connection $siteConn -ErrorAction Stop
+            foreach ($perm in $permissions) {
+                $level = if ($null -ne $perm.permissionLevel) { [string]$perm.permissionLevel } else { '' }
+                if ([string]::IsNullOrWhiteSpace($level)) {
+                    Write-Verbose "Restore-SPCOrphanedUser: Skipping blank permissionLevel entry for $upn"
+                    continue
                 }
-                $restoredCount++
-                Write-Verbose "Restore-SPCOrphanedUser: Restored permission '$level' for $upn"
-            } catch {
-                $failedCount++
-                $errMsgs.Add("Permission '$level': $($_.Exception.Message)")
-                Write-Verbose "Restore-SPCOrphanedUser: Failed to restore '$level' for $upn — $_"
+
+                try {
+                    if ($level -match '^\d+$') {
+                        Add-PnPRoleAssignment -LoginName $loginName -RoleDefinitionId ([int]$level) `
+                            -Connection $siteConn -ErrorAction Stop
+                    } else {
+                        Add-PnPRoleAssignment -LoginName $loginName -RoleDefinitionName $level `
+                            -Connection $siteConn -ErrorAction Stop
+                    }
+                    $restoredCount++
+                    Write-Verbose "Restore-SPCOrphanedUser: Restored permission '$level' for $upn"
+                } catch {
+                    $failedCount++
+                    $errMsgs.Add("Permission '$level': $($_.Exception.Message)")
+                    Write-Verbose "Restore-SPCOrphanedUser: Failed to restore '$level' for $upn — $_"
+                }
             }
-        }
 
-        foreach ($grp in $groupMemberships) {
-            $grpName = $grp.groupName
-            if ([string]::IsNullOrWhiteSpace($grpName)) { continue }
-            try {
-                Add-PnPGroupMember -LoginName $loginName -Group $grpName -Connection $siteConn -ErrorAction Stop
-                $restoredCount++
-                Write-Verbose "Restore-SPCOrphanedUser: Restored group membership '$grpName' for $upn"
-            } catch {
-                $failedCount++
-                $errMsgs.Add("Group '$grpName': $($_.Exception.Message)")
-                Write-Verbose "Restore-SPCOrphanedUser: Failed to restore group '$grpName' for $upn — $_"
+            foreach ($grp in $groupMemberships) {
+                $grpName = $grp.groupName
+                if ([string]::IsNullOrWhiteSpace($grpName)) { continue }
+                try {
+                    Add-PnPGroupMember -LoginName $loginName -Group $grpName -Connection $siteConn -ErrorAction Stop
+                    $restoredCount++
+                    Write-Verbose "Restore-SPCOrphanedUser: Restored group membership '$grpName' for $upn"
+                } catch {
+                    $failedCount++
+                    $errMsgs.Add("Group '$grpName': $($_.Exception.Message)")
+                    Write-Verbose "Restore-SPCOrphanedUser: Failed to restore group '$grpName' for $upn — $_"
+                }
             }
-        }
 
-        $status   = if ($failedCount -eq 0)       { 'Success' }
-                    elseif ($restoredCount -gt 0)  { 'PartialSuccess' }
-                    else                           { 'Failed' }
-        $errorMsg = if ($errMsgs.Count -gt 0) { $errMsgs -join '; ' } else { $null }
+            $status   = if ($failedCount -eq 0)       { 'Success' }
+                        elseif ($restoredCount -gt 0)  { 'PartialSuccess' }
+                        else                           { 'Failed' }
+            $errorMsg = if ($errMsgs.Count -gt 0) { $errMsgs -join '; ' } else { $null }
 
-        $result = [PSCustomObject][ordered]@{
-            SiteUrl             = $siteUrl
-            UPN                 = $upn
-            DisplayName         = $displayName
-            PermissionsRestored = $restoredCount
-            PermissionsFailed   = $failedCount
-            Status              = $status
-            ErrorMessage        = $errorMsg
-            RestoredAt          = (Get-Date).ToUniversalTime()
-        }
-        $result.PSObject.TypeNames.Insert(0, 'SPC.RestoreResult')
-        $result
+            $result = [PSCustomObject][ordered]@{
+                SiteUrl             = $siteUrl
+                UPN                 = $upn
+                DisplayName         = $displayName
+                PermissionsRestored = $restoredCount
+                PermissionsFailed   = $failedCount
+                Status              = $status
+                ErrorMessage        = $errorMsg
+                RestoredAt          = (Get-Date).ToUniversalTime()
+            }
+            $result.PSObject.TypeNames.Insert(0, 'SPC.RestoreResult')
+            $result
         } finally {
             if ($removeSca -and $myUPN) {
                 Write-Verbose "Restore-SPCOrphanedUser: Removing temporary Site Collection Admin rights for $myUPN on $siteUrl"

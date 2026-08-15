@@ -1,4 +1,4 @@
-﻿# PnP 3.x removed Get-PnPSiteUser; Get-PnPUser now returns all UIL users without a filter.
+# PnP 3.x removed Get-PnPSiteUser; Get-PnPUser now returns all UIL users without a filter.
 if (-not (Get-Command -Name 'Get-PnPSiteUser' -ErrorAction SilentlyContinue)) {
     function Get-PnPSiteUser {
         param(
@@ -24,22 +24,106 @@ if (Get-Command -Name 'Get-PnPWeb' -Module PnP.PowerShell -ErrorAction SilentlyC
 function Get-SPCMismatchUser {
     <#
     .SYNOPSIS
-        Scans SharePoint Online and OneDrive site collections for User ID mismatches.
+        Scans SharePoint Online and OneDrive site collections to detect and classify User ID mismatches and stale identities.
+
     .DESCRIPTION
-        Detects UIL records whose ObjectIds do not match the corresponding Entra ID account.
-        This occurs primarily during account recreation, guest re-invitation, or directory sync changes.
+        PROBLEM:
+        In evolving Microsoft 365 environments, account re-creation, guest user re-invitation, cross-tenant migrations,
+        and directory synchronization changes frequently cause identity desynchronization. When an account is re-created
+        with the same User Principal Name (UPN) or email address, Entra ID (formerly Azure AD) assigns a completely new
+        Immutable ID (ObjectId). However, SharePoint Online maintains historical identity references in its hidden
+        User Information List (UIL). The resulting "Site User ID Mismatch" leaves stale permission footprints, breaks
+        access to shared resources and OneDrive repositories, compromises compliance audits, and creates silent security
+        risks where permissions might be inherited or misattributed to re-provisioned accounts.
+
+        AGITATION:
+        Detecting and diagnosing User ID mismatches manually across hundreds or thousands of SharePoint Online site
+        collections and OneDrive accounts is an administrative nightmare. Administrators are forced to write complex CSOM
+        scripts, manually compare Entra ID Graph ObjectIds against hidden UIL records across every site collection, and
+        correlate duplicate entries. This labor-intensive manual auditing is slow, highly error-prone, causes user downtime,
+        and leaves organizations vulnerable to compliance failure under ISO 27001, SOC 2, and GDPR audits.
+
+        SOLUTION:
+        Get-SPCMismatchUser delivers an enterprise-ready, automated scanning engine that systematically traverses target
+        sites or entire tenants. It extracts UIL records, leverages high-throughput Microsoft Graph batching to validate
+        live Entra ID identities, and detects discrepancies between Entra ObjectIds and SharePoint UIL ObjectIds in seconds.
+        The cmdlet classifies each identity into clear, actionable statuses:
+        - Healthy: The UIL record accurately matches the active Entra ID account.
+        - StaleIdentity: The account exists in Entra ID, but the SharePoint UIL references an outdated ObjectId (e.g., re-created employee).
+        - GuestMismatch: An external guest account (#EXT#) was re-invited or re-created with a changed tenant identity.
+        - DuplicateEntry: Multiple conflicting UIL entries exist for the same UPN within a single site collection.
+        - OrphanedOneDrive: A personal OneDrive site collection is associated with a mismatched or stale identity.
+
+        By providing immediate visibility into identity drift, Get-SPCMismatchUser turns hours of tedious troubleshooting
+        into effortless, one-click insights—empowering administrators to safeguard access governance, reduce compliance
+        risk, and pipeline results directly into Repair-SPCMismatchUser for automated remediation.
+
     .PARAMETER SiteUrl
-        One or more full site collection URLs. Mutually exclusive with -AllSites.
+        Specifies one or more full SharePoint Online or OneDrive site collection URLs to scan.
+        Accepts pipeline input by value and property name. Mutually exclusive with -AllSites.
+
     .PARAMETER AllSites
-        Scan all site collections in the tenant.
+        Scans all site collections across the entire Microsoft 365 tenant.
+        Automatically excludes redirect sites and iterates across tenant inventory. Mutually exclusive with -SiteUrl.
+
     .PARAMETER User
-        Optional array of UPNs or Emails to filter the scan.
+        Specifies an optional array of User Principal Names (UPNs) or Email addresses to filter the scan.
+        When provided, only UIL records matching these identities will be evaluated against Entra ID.
+
     .PARAMETER ThrottleLimit
-        Maximum concurrent site connections. Default 3.
+        Specifies the maximum concurrent connections/throttling threshold for site processing.
+        Acceptable range is 1 to 10 (default is 3). Values outside this range are automatically clamped.
+
     .EXAMPLE
-        Get-SPCMismatchUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
+        Get-SPCMismatchUser -SiteUrl 'https://contoso.sharepoint.com/sites/HumanResources'
+
+        Scans the 'HumanResources' site collection for any mismatched, stale, or duplicate UIL identity records against Entra ID.
+
+    .EXAMPLE
+        Get-SPCMismatchUser -AllSites -ThrottleLimit 5 | Where-Object Status -ne 'Healthy' | Format-Table SiteUrl, DisplayName, UPN, Status, EntraObjectId, UILObjectId -AutoSize
+
+        Performs a tenant-wide scan across all site collections using a concurrency throttle limit of 5. Filters out healthy accounts to display only identities requiring remediation.
+
+    .EXAMPLE
+        $mismatches = Get-SPCMismatchUser -SiteUrl 'https://contoso-my.sharepoint.com/personal/john_doe_contoso_com' -User 'john.doe@contoso.com'
+        $mismatches | Export-Csv -Path 'C:\Audits\OneDrive_Mismatch_Audit.csv' -NoTypeInformation
+
+        Audits a specific OneDrive repository for User ID mismatch discrepancies for a specific re-hired employee and exports the actionable audit results to a CSV file for compliance reporting.
+
+    .EXAMPLE
+        Get-SPCMismatchUser -SiteUrl 'https://contoso.sharepoint.com/sites/Finance' | Where-Object Status -in @('StaleIdentity', 'GuestMismatch') | Repair-SPCMismatchUser -Mode CleanAndRestore -CreateSnapshot -SnapshotPath 'C:\Snapshots'
+
+        Scans the Finance site collection for stale employee and guest mismatches, pipes the detected issues directly to Repair-SPCMismatchUser to create a safety snapshot, remove stale UIL records, and restore permissions to the active Entra ID identities.
+
     .OUTPUTS
-        SPC.MismatchUser
+        [PSCustomObject] with type name 'SPC.MismatchUser'.
+        Contains properties:
+        - SiteUrl: The target site collection URL.
+        - SiteTitle: The title of the SharePoint site.
+        - UserId: The integer ID of the user within the site User Information List.
+        - LoginName: The full SharePoint claims login name.
+        - DisplayName: The display name recorded in the UIL.
+        - Email: The email address associated with the account in SharePoint.
+        - UPN: The extracted User Principal Name.
+        - Status: Identity classification ('Healthy', 'StaleIdentity', 'GuestMismatch', 'DuplicateEntry', 'OrphanedOneDrive', 'Unknown').
+        - EntraObjectId: The active object identifier from Entra ID Graph.
+        - UILObjectId: The object identifier currently stored in the SharePoint UIL.
+        - DetectedAt: UTC timestamp of the scan operation.
+        - OriginalOneDriveUrl: Reserved for OneDrive URL mapping.
+        - CurrentOneDriveUrl: Reserved for updated OneDrive URL mapping.
+
+    .NOTES
+        Module: SPClean
+        Author: SPClean Team
+        Requires: Active connection established via Connect-SPCTenant.
+        Permissions: Requires SharePoint Admin / Global Reader or appropriate Microsoft Graph permissions (User.Read.All).
+
+    .LINK
+        Connect-SPCTenant
+    .LINK
+        Repair-SPCMismatchUser
+    .LINK
+        Get-SPCOrphanedUser
     #>
     [CmdletBinding(DefaultParameterSetName = 'SingleSite')]
     [OutputType([PSCustomObject])]

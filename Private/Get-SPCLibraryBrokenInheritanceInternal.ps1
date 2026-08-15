@@ -1,3 +1,5 @@
+
+
 function Get-SPCLibraryBrokenInheritanceInternal {
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
@@ -14,29 +16,7 @@ function Get-SPCLibraryBrokenInheritanceInternal {
     process {
         try {
             Write-Verbose "Connecting to PnP Online for Site: $SiteUrl"
-            $siteConn = $null
-            $tenantId = if ($script:SPCContext.TenantName -match '\.') { $script:SPCContext.TenantName } else { "$($script:SPCContext.TenantName).onmicrosoft.com" }
-
-            if ($script:SPCContext.AuthMethod -eq 'Interactive') {
-                $siteConn = Connect-PnPOnline -Url $SiteUrl -Interactive -ClientId $script:SPCContext._ClientId -ReturnConnection
-            } elseif ($script:SPCContext._CertificateThumbprint) {
-                $siteConn = Connect-PnPOnline -Url $SiteUrl -ClientId $script:SPCContext._ClientId -Tenant $tenantId -Thumbprint $script:SPCContext._CertificateThumbprint -ReturnConnection
-            } elseif ($script:SPCContext._CertificatePath) {
-                if ($null -ne $script:SPCContext._CertificatePassword) {
-                    $siteConn = Connect-PnPOnline -Url $SiteUrl -ClientId $script:SPCContext._ClientId -Tenant $tenantId -CertificatePath $script:SPCContext._CertificatePath -CertificatePassword $script:SPCContext._CertificatePassword -ReturnConnection
-                } else {
-                    $siteConn = Connect-PnPOnline -Url $SiteUrl -ClientId $script:SPCContext._ClientId -Tenant $tenantId -CertificatePath $script:SPCContext._CertificatePath -ReturnConnection
-                }
-            } else {
-                $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($script:SPCContext._ClientSecret)
-                try {
-                    $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                    $siteConn = Connect-PnPOnline -Url $SiteUrl -ClientId $script:SPCContext._ClientId -ClientSecret $plain -ReturnConnection
-                } finally {
-                    [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-                    $plain = $null
-                }
-            }
+            $siteConn = Connect-SPCSiteInternal -SiteUrl $SiteUrl -Context $script:SPCContext
             
             $lists = Get-PnPList -Connection $siteConn -Includes HasUniqueRoleAssignments, RootFolder -ErrorAction Stop | Where-Object { $_.BaseType -eq 'DocumentLibrary' -and $_.Hidden -eq $false }
             

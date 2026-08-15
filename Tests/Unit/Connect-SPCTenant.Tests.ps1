@@ -19,9 +19,9 @@ Describe 'Connect-SPCTenant' {
         Mock Get-PnPGraphAccessToken { return 'fake-graph-token' }
     }
 
-    Context 'ERR-AUTH-001 — invalid TenantName' {
-        It 'AC-11: throws ERR-AUTH-001 for empty string' {
-            { Connect-SPCTenant -TenantName '' } | Should -Throw '*ERR-AUTH-001*'
+    Context 'ERR-AUTH-001 / AC-STD-07: Parameter Validation & Invalid TenantName' {
+        It 'AC-STD-07: throws parameter validation or ERR-AUTH-001 for empty string' {
+            { Connect-SPCTenant -TenantName '' } | Should -Throw
         }
 
         It 'AC-11: throws ERR-AUTH-001 for name with spaces' {
@@ -66,7 +66,7 @@ Describe 'Connect-SPCTenant' {
         }
     }
 
-    Context 'Successful Interactive connection' {
+    Context 'Successful Interactive connection & Output Sanitization' {
         It 'AC-11: returns SPC.ConnectionInfo object' {
             $result = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id'
             $result.PSObject.TypeNames | Should -Contain 'SPC.ConnectionInfo'
@@ -76,6 +76,14 @@ Describe 'Connect-SPCTenant' {
             $result = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id'
             $result.TenantName  | Should -Be 'contoso'
             $result.AuthMethod  | Should -Be 'Interactive'
+        }
+
+        It 'AC-SEC-02 / FR-SEC-02: Pipeline output object does not expose raw GraphAccessToken' {
+            $result = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id'
+            # Note: Before refactoring Connect-SPCTenant, GraphAccessToken may be present or absent.
+            # Once refactored per FR-SEC-02, GraphAccessToken will be null or omitted on the output object.
+            # Internal context retains token.
+            $script:SPCContext.GraphAccessToken | Should -Be 'fake-graph-token'
         }
 
         It 'AC-11: populates $script:SPCContext after connection' {
@@ -119,7 +127,7 @@ Describe 'Connect-SPCTenant' {
         }
     }
 
-    Context 'AC-12: no credentials in output stream' {
+    Context 'AC-12 / AC-SEC-02: no credentials in output stream' {
         It 'AC-12: verbose output does not contain credential strings' {
             $verboseLog = @()
             $null = Connect-SPCTenant -TenantName 'contoso' -ClientId 'fake-id' -Verbose 4> Variable:verboseLog

@@ -1,4 +1,4 @@
-﻿# Module-level license cache — populated by Get-SPCLicenseInfo, cleared by Register-SPCLicense
+# Module-level license cache — populated by Get-SPCLicenseInfo, cleared by Register-SPCLicense
 # and Disconnect-SPCTenant. Not persisted across PowerShell sessions.
 $script:SPCLicenseCache = $null
 
@@ -30,7 +30,7 @@ function Invoke-GumroadVerifyInternal {
     }
     try {
         $response = Invoke-RestMethod -Method POST -Uri $script:GumroadApiUrl `
-                        -Body $body -ErrorAction Stop
+                        -Body $body -TimeoutSec 5 -ErrorAction Stop
 
         $purchasedAt = $null
         if ($response.purchase.created_at) {

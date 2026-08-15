@@ -1,13 +1,27 @@
-function Invoke-SPCDashboardReportV1 {
+function Invoke-SPCDashboardReport {
+    <#
+    .SYNOPSIS
+        Generates the executive HTML Permission Health Dashboard report (Pro Feature).
+    .DESCRIPTION
+        Aggregates orphaned users, external guest risks, privileged accounts, and over-permissioned
+        users across the tenant and builds an HTML visual dashboard report.
+    .PARAMETER OutputPath
+        Target file path for the HTML report. Defaults to .\Dashboard.html.
+    .OUTPUTS
+        [System.IO.FileInfo]
+    #>
     [CmdletBinding()]
+    [OutputType([System.IO.FileInfo])]
     param (
-        [Parameter(Mandatory=$false)]
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
         [string]$OutputPath = ".\Dashboard.html"
     )
 
     begin {
-        Write-Verbose "Starting Invoke-SPCDashboardReportV1"
+        Write-Verbose "Starting Invoke-SPCDashboardReport"
         Test-SPCConnection
+        Assert-SPCProLicense -Feature 'DashboardReport'
     }
 
     process {
@@ -25,10 +39,10 @@ function Invoke-SPCDashboardReportV1 {
 
         # Calculate summary metrics
         $totalOrphaned = $orphans.Count
-        $totalGuests = $guests.Count
+        $totalGuests   = $guests.Count
         $highRiskOrphans = ($orphans | Where-Object { $_.RiskLevel -eq 'HIGH' }).Count
-        $highRiskGuests = ($guests | Where-Object { $_.RiskLevel -eq 'HIGH' }).Count
-        $highRiskUsers = $highRiskOrphans + $highRiskGuests
+        $highRiskGuests  = ($guests | Where-Object { $_.RiskLevel -eq 'HIGH' }).Count
+        $highRiskUsers   = $highRiskOrphans + $highRiskGuests
         $topHighRiskGuestsList = @($guests | Where-Object { $_.RiskLevel -eq 'HIGH' })
 
         $graphToken = $script:SPCContext.GraphAccessToken
@@ -52,11 +66,12 @@ function Invoke-SPCDashboardReportV1 {
             -PrivilegedUsers $privileged `
             -OverPermissionedUsers $overPermissioned
 
-        Write-Verbose "Dashboard HTML generated successfully at $OutputPath"
-        return $OutputPath
+        $resolved = Get-Item -Path $OutputPath
+        Write-Verbose "Dashboard HTML generated successfully at $($resolved.FullName)"
+        return $resolved
     }
 
     end {
-        Write-Verbose "Completed Invoke-SPCDashboardReportV1"
+        Write-Verbose "Completed Invoke-SPCDashboardReport"
     }
 }

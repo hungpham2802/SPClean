@@ -3,6 +3,9 @@
 BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Save-SPCPermissionSnapshot.ps1')
+    if (Test-Path (Join-Path $PSScriptRoot '../../Private/Connect-SPCSiteInternal.ps1')) {
+        . (Join-Path $PSScriptRoot '../../Private/Connect-SPCSiteInternal.ps1')
+    }
     . (Join-Path $PSScriptRoot '../../Public/Remediate/Remove-SPCOrphanedUser.ps1')
 
     # ── Shared fake data ────────────────────────────────────────────────────────
@@ -11,6 +14,7 @@ BeforeAll {
         TenantName           = 'contoso'
         AuthMethod           = 'Interactive'
         ConnectedAt          = (Get-Date).ToUniversalTime()
+        GraphTokenRefreshedAt= (Get-Date).ToUniversalTime()
         PnPContext           = $null
         GraphAccessToken     = 'fake-graph-token'
         _ClientId            = $null
@@ -131,7 +135,7 @@ Describe 'Remove-SPCOrphanedUser' {
         }
     }
 
-    Context 'AC-06: SPC.RemovalResult output' {
+    Context 'AC-06 / AC-STD-06: SPC.RemovalResult output & Skipped Count Separation' {
         It 'AC-06: output has TypeName SPC.RemovalResult' {
             $orphan = New-FakeOrphan
             $result = $orphan | Remove-SPCOrphanedUser -Force

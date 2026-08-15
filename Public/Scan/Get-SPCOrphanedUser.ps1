@@ -1,11 +1,19 @@
-﻿# PnP 3.x removed Get-PnPSiteUser; Get-PnPUser now returns all UIL users without a filter.
-if (-not (Get-Command -Name 'Get-PnPSiteUser' -ErrorAction SilentlyContinue)) {
-    function Get-PnPSiteUser {
-        [CmdletBinding()]
-        param([Parameter()] [object] $Connection)
-        $params = @{}; foreach ($k in $PSBoundParameters.Keys) { $params[$k] = $PSBoundParameters[$k] }
-        & Get-PnPUser @params
+# PnP 3.x removed Get-PnPSiteUser; Get-PnPUser now returns all UIL users without a filter.
+function Get-PnPSiteUser {
+    [CmdletBinding()]
+    param([Parameter()] [object] $Connection)
+    if (Get-Command -Name 'Get-PnPSiteUser' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Get-PnPSiteUser' -Module PnP.PowerShell) -Connection $Connection
+    } else {
+        Get-PnPUser -Connection $Connection
     }
+}
+
+# PnP 3.x removed Get-PnPGraphAccessToken; provide compat wrapper so existing mocks and call sites work.
+function Get-PnPGraphAccessToken {
+    [CmdletBinding()]
+    param([Parameter()] [object] $Connection)
+    if ($Connection) { Get-PnPAccessToken -Connection $Connection } else { Get-PnPAccessToken }
 }
 
 # PS wrappers with [object] Connection so Pester mocks don't enforce PnPConnection type coercion.
@@ -144,40 +152,6 @@ function Get-SPCOrphanedUser {
     }
 
     end {
-        # ScriptBlock used to connect to each site collection, reusing stored auth params
-        $connectToSite = {
-            param([string] $SiteUrl, [PSCustomObject] $Ctx)
-            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
-            switch ($Ctx.AuthMethod) {
-                'Interactive' {
-                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
-                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
-                }
-                'AppOnly' {
-                    if ($Ctx._CertificatePath) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -CertificatePath $Ctx._CertificatePath `
-                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    } elseif ($Ctx._CertificateThumbprint) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    } else {
-                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
-                        try {
-                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                            Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                                -ClientSecret $plain -ReturnConnection
-                        } finally {
-                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-                            $plain = $null
-                        }
-                    }
-                }
-            }
-        }
-
         # SRS 3.2.1: system account login name patterns to exclude (step 7)
         $systemPatterns = @(
             'SHAREPOINT\system',
@@ -197,12 +171,13 @@ function Get-SPCOrphanedUser {
             $siteIdx++
 
             # Refresh Graph token if older than 50 minutes to avoid expiration during long scans
-            $timeSinceConnect = (Get-Date).ToUniversalTime() - $ctx.ConnectedAt
-            if ($timeSinceConnect.TotalMinutes -gt 50) {
+            $lastTokenTime = if ($ctx.GraphTokenRefreshedAt) { $ctx.GraphTokenRefreshedAt } else { $ctx.ConnectedAt }
+            $timeSinceRefresh = (Get-Date).ToUniversalTime() - $lastTokenTime
+            if ($timeSinceRefresh.TotalMinutes -gt 50) {
                 Write-Verbose "Get-SPCOrphanedUser: Graph token is older than 50 minutes. Refreshing..."
                 $graphToken = Get-PnPGraphAccessToken -Connection $ctx.PnPContext
                 $ctx.GraphAccessToken = $graphToken
-                $ctx.ConnectedAt = (Get-Date).ToUniversalTime()
+                $ctx.GraphTokenRefreshedAt = (Get-Date).ToUniversalTime()
             }
             if ($showProgress) {
                 Write-Progress -Activity 'Get-SPCOrphanedUser' `
@@ -215,7 +190,7 @@ function Get-SPCOrphanedUser {
             $siteConn = $null
 
             try {
-                $siteConn = & $connectToSite -SiteUrl $currentSiteUrl -Ctx $ctx
+                $siteConn = Connect-SPCSiteInternal -SiteUrl $currentSiteUrl -Context $ctx
             } catch {
                 Write-Error "[ERR-GOU-001] $(Get-Date -Format 'o'): Cannot connect to site collection '$currentSiteUrl'. Resource: $currentSiteUrl. Details: $_" -ErrorAction Continue
                 continue
@@ -243,7 +218,7 @@ function Get-SPCOrphanedUser {
                                 $removeSca = $true
                                 
                                 Start-Sleep -Seconds 5
-                                $siteConn = & $connectToSite -SiteUrl $currentSiteUrl -Ctx $ctx
+                                $siteConn = Connect-SPCSiteInternal -SiteUrl $currentSiteUrl -Context $ctx
                                 $uilUsers = Get-PnPSiteUser -Connection $siteConn -ErrorAction Stop
                             } catch {
                                 Write-Error "[ERR-GOU-003] $(Get-Date -Format 'o'): Failed to add temporary SCA or retry on '$currentSiteUrl'. Resource: $currentSiteUrl. Details: $_" -ErrorAction Continue
@@ -308,11 +283,12 @@ function Get-SPCOrphanedUser {
 
                     if (-not $upn) { continue }
 
+                    $escapedPathUpn = [System.Uri]::EscapeDataString($upn)
                     $requestIdMap["$reqId"] = @{ User = $user; UPN = $upn }
                     $batchRequests.Add(@{
                         id     = "$reqId"
                         method = 'GET'
-                        url    = "/users/$([uri]::EscapeDataString($upn))?`$select=id,displayName,givenName,surname,accountEnabled,userPrincipalName"
+                        url    = "/users/${escapedPathUpn}?`$select=id,displayName,givenName,surname,accountEnabled,userPrincipalName"
                     })
                     $reqId++
                 }
@@ -343,10 +319,11 @@ function Get-SPCOrphanedUser {
                     foreach ($item in $notFoundItems) {
                         if (-not $seenDelUpns.ContainsKey($item.UPN)) {
                             $seenDelUpns[$item.UPN] = $true
+                            $escapedODataUpn = $item.UPN.Replace("'", "''")
                             $delRequests.Add(@{
                                 id     = "del_$delId"
                                 method = 'GET'
-                                url    = "/directory/deletedItems/microsoft.graph.user?`$filter=userPrincipalName eq '$($item.UPN)'&`$select=id,userPrincipalName,displayName,givenName,surname"
+                                url    = "/directory/deletedItems/microsoft.graph.user?`$filter=userPrincipalName eq '$escapedODataUpn'&`$select=id,userPrincipalName,displayName,givenName,surname"
                             })
                             $delId++
                         }

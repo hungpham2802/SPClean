@@ -1,7 +1,7 @@
 # SPClean
 
-> **PowerShell toolkit for SharePoint Online permission hygiene.**  
-> Find orphaned users, score risk, generate reports, and remove safely — without enterprise-software pricing.
+> **Enterprise PowerShell Toolkit for SharePoint Online Permission Hygiene & Storage Optimization.**  
+> Find orphaned identities, quantify storage waste, enforce Purview-safe remediation, and generate executive ROI dashboards.
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-7%2B-5391FE?style=flat&logo=powershell&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-SharePoint%20Online-0078D4?style=flat&logo=microsoft-sharepoint&logoColor=white)
@@ -13,26 +13,36 @@
 
 ---
 
-## Why SPClean
+## Why SPClean: Problem → Agitation → Solution
 
-Every SharePoint tenant accumulates **orphaned users** — accounts that linger in site permission lists long after the employee left, the contractor finished, or the guest expired. Microsoft has no built-in tool to find and clean them at scale.
+### 1. The Problem (The Hidden Bleed)
+Every Microsoft 365 tenant suffers from two silent financial and security drains:
+- **Excess Storage Bloat**: Extra SharePoint Online storage costs a premium **$0.20 per GB / month ($2,400 / TB / year)**. When tenants hit storage quotas unexpectedly, IT organizations face emergency add-on licensing invoices running into tens of thousands of dollars.
+- **Identity & Permission Sprawl**: Ghost identities—departed employees, terminated contractors, and obsolete external guests—linger in SharePoint User Information Lists (UIL) holding unrevoked direct access to sensitive corporate repositories.
 
-The result: deleted accounts still holding active permissions, compliance reports flagging ghost identities, and hours of manual cleanup per tenant.
+### 2. The Agitation (The Operational Nightmare)
+Managing this manually across hundreds or thousands of SharePoint site collections is impossible:
+- **Storage Blindspots**: Hidden bloat is scattered across first-stage recycle bins, second-stage admin recycle bins, unconstrained document version histories (hundreds of intermediate revisions per file), and locked Preservation Hold Libraries (PHL).
+- **Compliance Risk**: One wrong bulk PowerShell script can inadvertently delete data protected under **Microsoft Purview Legal or Litigation Hold**, triggering severe regulatory violations and legal liabilities.
+- **Manual Overhead**: Cross-referencing Entra ID (Azure AD) user states against SharePoint site collections manually takes dozens of engineer hours each month with high risk of human error.
 
-SPClean fixes this in minutes:
+### 3. The Solution (SPClean: Precision, Safety & Immediate ROI)
+**SPClean** provides an automated, non-destructive enterprise toolkit built specifically for M365 Administrators, IT Directors, and Managed Service Providers (MSPs):
+- **Automated Waste Discovery**: Quantify storage waste across recycle bins, document version sprawl, and inactive sites in seconds with exact financial cost avoidance calculations.
+- **Purview Hold Immunity**: Built-in compliance locks verify retention policies before any purge, preventing compliance breaches.
+- **Risk Scoring & Safe Remediation**: Identify orphaned users with automated risk classification (HIGH / MEDIUM / LOW), preview changes safely with `-WhatIf` / `-DryRun`, and take automatic JSON permission snapshots for instant rollback.
+- **Executive ROI Dashboards**: Generate standalone, interactive HTML Dashboards with cost savings breakdowns and append-only immutable CSV audit logs.
 
 ```powershell
-# Scan all sites, get a colour-coded HTML report
+# 1. Connect to your tenant
 Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
-Get-SPCOrphanedUser -AllSites | Export-SPCReport -Format HTML -IncludeSummary
 
-# Preview what would be removed — no changes made
-Get-SPCOrphanedUser -AllSites | Remove-SPCOrphanedUser -WhatIf
+# 2. Discover storage waste & generate an executive ROI dashboard
+Get-SPCStorageWaste -Top 20 -IncludeVersions | Export-SPCStorageReport -Format HTML -OutputPath '.\Reports'
 
-# Remove HIGH-risk orphans with a snapshot backup
-Get-SPCOrphanedUser -AllSites |
-    Where-Object RiskLevel -eq 'HIGH' |
-    Remove-SPCOrphanedUser -CreateSnapshot -SnapshotPath C:\Snapshots
+# 3. Clean orphaned users safely with snapshot backup
+Get-SPCOrphanedUser -AllSites | Where-Object RiskLevel -eq 'HIGH' |
+    Remove-SPCOrphanedUser -CreateSnapshot -SnapshotPath 'C:\Snapshots'
 ```
 
 ![SPClean demo](docs/assets/demo.gif)
@@ -41,17 +51,26 @@ Get-SPCOrphanedUser -AllSites |
 
 ## Licensing
 
-SPClean uses a **free + paid tier** model. Core scanning is always free.
+SPClean offers flexible tiers for single tenants and MSP consultants. Core discovery and simulation modes are **100% Free forever**.
 
-| Tier | Price | Features |
-| --- | --- | --- |
-| **Free** | $0 forever | Unlimited site scan · CSV export · WhatIf dry-run |
-| **Pro** | $199 / tenant / year | HTML report · Scheduled scan · Snapshot & restore |
-| **Consultant** | $399 / year | Unlimited tenants · White-label HTML report · Priority support |
+| Feature | Free Tier | Pro Tier ($199/yr) | Consultant Tier ($399/yr) |
+| --- | :---: | :---: | :---: |
+| **Scope** | Single / Multi | Single Tenant | **Unlimited Tenants** |
+| Orphan & Mismatch Identity Scans | ✅ Free | ✅ | ✅ |
+| Storage Waste & Version Analytics | ✅ Free | ✅ | ✅ |
+| Inactive Site & PHL Discovery | ✅ Free | ✅ | ✅ |
+| Full Simulation Modes (`-WhatIf` / `-DryRun`) | ✅ Free | ✅ | ✅ |
+| CSV & JSON Data Exports | ✅ Free | ✅ | ✅ |
+| Executive HTML ROI Dashboards | — | ✅ Included | ✅ Included |
+| Live Recycle Bin & Version Remediation | — | ✅ Included | ✅ Included |
+| Snapshot Backups & Automated Rollback | — | ✅ Included | ✅ Included |
+| Scheduled Automation (Scheduled Tasks) | — | ✅ Included | ✅ Included |
+| White-Label MSP Reports (`-CompanyLogoUrl`) | — | — | ✅ Included |
+| Priority Technical Support | — | — | ✅ Included |
 
 **→ [Purchase a license at ngochung47.gumroad.com](https://ngochung47.gumroad.com/)**
 
-After purchasing, activate with one command:
+Activate your license in seconds:
 
 ```powershell
 Register-SPCLicense -LicenseKey 'XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX'
@@ -227,6 +246,8 @@ Disconnect-SPCTenant
 
 ## Quick start
 
+### 1. Permission Hygiene & Orphaned Users
+
 ```powershell
 # 1. Connect
 Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
@@ -234,7 +255,7 @@ Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
 # 2. Scan one site and view results
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
 
-# 3. Export to HTML report  [Pro]
+# 3. Export to interactive HTML report  [Pro]
 Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Export-SPCReport -Format HTML -IncludeSummary
 
@@ -251,10 +272,40 @@ Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
 Get-SPCMismatchUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' |
     Repair-SPCMismatchUser -Mode CleanAndRestore -Force
 
-# 7. Audit specific access scenarios
+# 7. Audit privileged and over-permissioned access
 Get-SPCPrivilegedUser
 Get-SPCOverPermissionedUser
 Get-SPCGuestAccess -SiteUrl 'https://contoso.sharepoint.com/sites/Ext'
+
+# 8. Disconnect
+Disconnect-SPCTenant
+```
+
+### 2. Storage Optimization & ROI Dashboards
+
+```powershell
+# 1. Connect
+Connect-SPCTenant -TenantName contoso -ClientId '<app-id>'
+
+# 2. Discover storage waste across top 20 sites and export Executive HTML ROI Dashboard  [Pro]
+Get-SPCStorageWaste -Top 20 -IncludeVersions |
+    Export-SPCStorageReport -Format HTML -OutputPath '.\StorageReports'
+
+# 3. Inspect document library version sprawl and bloat ratio
+Get-SPCVersionWaste -SiteUrl 'https://contoso.sharepoint.com/sites/Marketing'
+
+# 4. Audit Preservation Hold Libraries (Microsoft Purview Retention / Litigation Holds)
+Get-SPCPreservationHoldWaste -WarningThresholdMB 5120
+
+# 5. Identify stale/inactive sites dormant for 180+ days
+Get-SPCInactiveSite -InactiveDays 180 -MinStorageMB 10240
+
+# 6. Preview and safely purge 1st and 2nd stage recycle bins with Purview Hold protection
+Clear-SPCRecycleBin -SiteUrl 'https://contoso.sharepoint.com/sites/Marketing' -OlderThanDays 30 -DryRun
+
+# 7. Safely trim redundant file versions (keep 50 versions, older than 90 days)  [Pro]
+Optimize-SPCFileVersion -SiteUrl 'https://contoso.sharepoint.com/sites/Marketing' `
+    -KeepVersions 50 -OlderThanDays 90 -ApplyPolicyToLibrary -DryRun
 
 # 8. Disconnect
 Disconnect-SPCTenant
@@ -545,7 +596,200 @@ New-SPCScanSchedule -TenantName contoso `
 
 ---
 
-### `Register-SPCLicense`
+### `Get-SPCStorageWaste`
+ 
+ Scans SharePoint Online site collections to quantify storage waste and identify cost avoidance opportunities across recycle bins, document version sprawl, and Preservation Hold Libraries.
+ 
+ ```
+ Get-SPCStorageWaste
+     [-SiteUrl                <string[]>]    # Target site collection URLs. Accepts pipeline.
+     [-IncludeRecycleBin]                    # Include 1st and 2nd stage recycle bins (default: $true).
+     [-IncludeVersions]                      # Calculate version history sprawl storage.
+     [-IncludePreservationHold]              # Audit Preservation Hold Library sizes.
+     [-Top                    <int>]         # Top N sites by waste in MB. Default 0 (all sites).
+ ```
+ 
+ Returns: `SPC.StorageWasteSummary`
+ 
+ **Examples:**
+ 
+ ```powershell
+ # Single site full audit
+ Get-SPCStorageWaste -SiteUrl 'https://contoso.sharepoint.com/sites/Marketing' -IncludeVersions -IncludePreservationHold
+ 
+ # Top 10 sites with highest waste across tenant
+ Get-SPCStorageWaste -Top 10 -IncludeVersions
+ ```
+ 
+ ---
+ 
+ ### `Get-SPCVersionWaste`
+ 
+ Analyzes document library file version sprawl and calculates recoverable storage capacity.
+ 
+ ```
+ Get-SPCVersionWaste
+     -SiteUrl        <string>                # Required site collection URL. Accepts pipeline.
+     [-LibraryTitle  <string[]>]             # Filter specific document library names.
+     [-KeepVersions  <int>]                  # Simulated versions to retain (default: 50).
+     [-OlderThanDays <int>]                  # Age in days for prunable versions (default: 90).
+     [-TopFiles      <int>]                  # Top bloated files reported per library (default: 50).
+ ```
+ 
+ Returns: `SPC.VersionWasteDetail`
+ 
+ **Examples:**
+ 
+ ```powershell
+ # Inspect library version bloat
+ Get-SPCVersionWaste -SiteUrl 'https://contoso.sharepoint.com/sites/Finance' -KeepVersions 50 -OlderThanDays 90
+ ```
+ 
+ ---
+ 
+ ### `Get-SPCPreservationHoldWaste`
+ 
+ Audits Preservation Hold Library (PHL) storage consumption and Microsoft Purview compliance hold locks.
+ 
+ ```
+ Get-SPCPreservationHoldWaste
+     [-SiteUrl            <string[]>]        # Site URLs to inspect.
+     [-WarningThresholdMB <double>]          # Alert threshold in MB (default: 5120 MB / 5 GB).
+ ```
+ 
+ Returns: `SPC.PreservationHoldWaste`
+ 
+ **Examples:**
+ 
+ ```powershell
+ # Check PHL storage and alerts across all sites
+ Get-SPCPreservationHoldWaste -WarningThresholdMB 10240 | Where-Object AlertLevel -in @('Warning', 'Critical')
+ ```
+ 
+ ---
+ 
+ ### `Get-SPCInactiveSite`
+ 
+ Identifies dormant, inactive, or stale SharePoint Online sites across the tenant using Microsoft Graph activity reports.
+ 
+ ```
+ Get-SPCInactiveSite
+     [-InactiveDays          <int>]          # Inactivity threshold in days (default: 180).
+     [-IncludeTeamSitesOnly]                 # Filter for M365 Group-connected Team Sites.
+     [-MinStorageMB          <double>]       # Filter for sites above storage threshold.
+     [-Top                   <int>]          # Top N largest inactive sites.
+ ```
+ 
+ Returns: `SPC.InactiveSite`
+ 
+ **Examples:**
+ 
+ ```powershell
+ # Find sites inactive for over 6 months
+ Get-SPCInactiveSite -InactiveDays 180 -MinStorageMB 5120
+ ```
+ 
+ ---
+ 
+ ### `Clear-SPCRecycleBin` `[Pro]`
+ 
+ Safely purges 1st and 2nd stage recycle bins with Purview hold protection, `-DryRun` simulation, and immutable CSV audit logging.
+ 
+ > `-DryRun` and `-WhatIf` work without a license. Live purging requires a **Pro or Consultant** license.
+ 
+ ```
+ Clear-SPCRecycleBin
+     -SiteUrl          <string[]>            # Target site URLs. Accepts pipeline.
+     [-OlderThanDays   <int>]                # Minimum age in days since deletion (default: 30).
+     [-FirstStageOnly | -SecondStageOnly]   # Target specific recycle bin stage.
+     [-DryRun]                               # Simulation mode without deletions.
+     [-AuditLogPath    <string>]             # Append-only CSV audit file path.
+     [-Force]                                # Suppress confirmation prompts.
+     [-WhatIf]
+ ```
+ 
+ Returns: `SPC.RecycleBinClearResult`
+ 
+ **Examples:**
+ 
+ ```powershell
+ # Safe preview simulation
+ Clear-SPCRecycleBin -SiteUrl 'https://contoso.sharepoint.com/sites/Marketing' -OlderThanDays 30 -DryRun
+ 
+ # Live purge second-stage recycle bin with audit log
+ Clear-SPCRecycleBin -SiteUrl 'https://contoso.sharepoint.com/sites/Marketing' -SecondStageOnly -OlderThanDays 14 -Force
+ ```
+ 
+ ---
+ 
+ ### `Optimize-SPCFileVersion` `[Pro]`
+ 
+ Optimizes document library storage by trimming redundant historical file versions and optionally adjusting library version limits.
+ 
+ > `-DryRun` and `-WhatIf` work without a license. Live trimming requires a **Pro or Consultant** license.
+ 
+ ```
+ Optimize-SPCFileVersion
+     -SiteUrl              <string>          # Target site URL. Accepts pipeline.
+     [-LibraryTitle        <string[]>]       # Specific library titles to optimize.
+     [-KeepVersions        <int>]            # Number of major versions to retain (default: 50).
+     [-OlderThanDays       <int>]            # Age threshold in days (default: 90).
+     [-ApplyPolicyToLibrary]                 # Update library's MajorVersionLimit to match -KeepVersions.
+     [-DryRun]                               # Simulation mode.
+     [-AuditLogPath        <string>]         # Append-only CSV audit file path.
+     [-Force]                                # Suppress confirmation prompts.
+     [-WhatIf]
+ ```
+ 
+ Returns: `SPC.FileVersionOptimizeResult`
+ 
+ **Examples:**
+ 
+ ```powershell
+ # Trim versions and update library policy
+ Optimize-SPCFileVersion -SiteUrl 'https://contoso.sharepoint.com/sites/Engineering' `
+     -KeepVersions 30 -OlderThanDays 60 -ApplyPolicyToLibrary -Force
+ ```
+ 
+ ---
+ 
+ ### `Export-SPCStorageReport` `[Pro]`
+ 
+ Compiles storage waste assessments, inactive sites, version sprawl, and preservation hold data into standalone interactive HTML ROI Dashboards and CSV data exports.
+ 
+ > CSV export is **free**. Generating HTML Executive Dashboards requires a **Pro or Consultant** license. White-label branding requires a **Consultant** license.
+ 
+ ```
+ Export-SPCStorageReport
+     -StorageWasteData      <SPC.StorageWasteSummary[]>   # Required storage waste dataset. Accepts pipeline.
+     [-InactiveSiteData     <SPC.InactiveSite[]>]         # Optional inactive sites dataset.
+     [-VersionWasteData     <SPC.VersionWasteDetail[]>]   # Optional version sprawl dataset.
+     [-PreservationHoldData <SPC.PreservationHoldWaste[]>]# Optional PHL audit dataset.
+     [-OutputPath           <string>]                     # Directory path for reports (default: .\Reports).
+     [-Format               HTML|CSV|All]                 # Export format (default: All).
+     [-UnitPricePerGB       <double>]                     # Cost per GB/month USD (default: 0.20).
+     [-CompanyLogoUrl       <string>]                     # Custom logo URL for white-labeling [Consultant].
+     [-ClientName           <string>]                     # Custom organization name [Consultant].
+ ```
+ 
+ Returns: `SPC.ReportExportSummary`
+ 
+ **Examples:**
+ 
+ ```powershell
+ # Generate Executive HTML ROI Dashboard
+ Get-SPCStorageWaste -Top 20 -IncludeVersions | Export-SPCStorageReport -Format HTML -OutputPath '.\Reports'
+ 
+ # White-labeled MSP report with custom storage pricing
+ Get-SPCStorageWaste | Export-SPCStorageReport -Format All `
+     -CompanyLogoUrl 'https://msp.example.com/logo.png' `
+     -ClientName 'Fabrikam Corp' `
+     -UnitPricePerGB 0.25
+ ```
+ 
+ ---
+ 
+ ### `Register-SPCLicense`
 
 Activates a purchased license key on the current machine.
 

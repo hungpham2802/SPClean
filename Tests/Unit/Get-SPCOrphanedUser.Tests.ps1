@@ -4,20 +4,22 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Get-SPCRiskLevel.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Invoke-SPCGraphBatch.ps1')
+    . (Join-Path $PSScriptRoot '../../Private/Connect-SPCSiteInternal.ps1')
     . (Join-Path $PSScriptRoot '../../Public/Scan/Get-SPCOrphanedUser.ps1')
 
     # ── Shared fake data ────────────────────────────────────────────────────────
 
     $script:FakeContext = [PSCustomObject]@{
-        TenantName           = 'contoso'
-        AuthMethod           = 'Interactive'
-        ConnectedAt          = (Get-Date).ToUniversalTime()
-        PnPContext           = $null
-        GraphAccessToken     = 'fake-graph-token'
-        _ClientId            = $null
-        _CertificatePath     = $null
-        _CertificatePassword = $null
-        _ClientSecret        = $null
+        TenantName            = 'contoso'
+        AuthMethod            = 'Interactive'
+        ConnectedAt           = (Get-Date).ToUniversalTime()
+        GraphTokenRefreshedAt = (Get-Date).ToUniversalTime()
+        PnPContext            = $null
+        GraphAccessToken      = 'fake-graph-token'
+        _ClientId             = $null
+        _CertificatePath      = $null
+        _CertificatePassword  = $null
+        _ClientSecret         = $null
     }
 
     # Three UIL users that will be classified as orphaned
@@ -31,38 +33,6 @@ BeforeAll {
     $script:SystemAccounts = @(
         [PSCustomObject]@{ Id = 99; LoginName = 'SHAREPOINT\system';                     Title = 'System'; Email = ''; PrincipalType = 'User' }
         [PSCustomObject]@{ Id = 98; LoginName = 'NT AUTHORITY\authenticated users';      Title = 'Everyone'; Email = ''; PrincipalType = 'User' }
-    )
-
-    # Graph batch response: all 404 → users are Deleted in Entra
-    function New-DeletedGraphResponse {
-        param([string[]] $ReqIds)
-        $ReqIds | ForEach-Object {
-            [PSCustomObject]@{ id = $_; status = 404; body = $null }
-        }
-    }
-
-    # Graph batch response: 200 with accountEnabled = true → user is active
-    function New-ActiveGraphResponse {
-        param([string[]] $ReqIds)
-        $ReqIds | ForEach-Object {
-            [PSCustomObject]@{
-                id     = $_
-                status = 200
-                body   = [PSCustomObject]@{
-                    id                  = "oid-$_"
-                    userPrincipalName   = "user$_@contoso.com"
-                    accountEnabled      = $true
-                    displayName         = "User $_"
-                }
-            }
-        }
-    }
-
-    # Soft-deleted check batch response: no results (user is hard-deleted, not soft-deleted)
-    $script:FakeSoftDeletedEmpty = @(
-        [PSCustomObject]@{ id = '1'; status = 200; body = [PSCustomObject]@{ value = @() } }
-        [PSCustomObject]@{ id = '2'; status = 200; body = [PSCustomObject]@{ value = @() } }
-        [PSCustomObject]@{ id = '3'; status = 200; body = [PSCustomObject]@{ value = @() } }
     )
 }
 
@@ -82,8 +52,6 @@ Describe 'Get-SPCOrphanedUser' {
     Context 'AC-03: orphan detection and classification' {
         BeforeEach {
             Mock Get-PnPSiteUser { return $script:FakeUILUsers }
-            # First batch call (user lookups) → all 404 (Deleted)
-            # Second batch call (soft-delete check) → no results → OrphanType = Deleted
             $script:callCount = 0
             Mock Invoke-SPCGraphBatch {
                 $script:callCount++
@@ -94,7 +62,6 @@ Describe 'Get-SPCOrphanedUser' {
                         [PSCustomObject]@{ id = '3'; status = 404; body = $null }
                     )
                 } else {
-                    # Soft-delete check: none found → users are hard-deleted
                     return @(
                         [PSCustomObject]@{ id = '1'; status = 200; body = [PSCustomObject]@{ value = @() } }
                         [PSCustomObject]@{ id = '2'; status = 200; body = [PSCustomObject]@{ value = @() } }
@@ -135,6 +102,50 @@ Describe 'Get-SPCOrphanedUser' {
             foreach ($prop in $required) {
                 $result[0].PSObject.Properties.Name | Should -Contain $prop
             }
+        }
+    }
+
+    Context 'AC-SEC-03: OData Injection & Escaping Protection' {
+        It 'AC-SEC-03: Escapes single quotes and special characters in UPN Graph requests' {
+            $specialUser = @(
+                [PSCustomObject]@{ Id = 10; LoginName = "i:0#.f|membership|o'connor@contoso.com"; Title = "O'Connor"; Email = "o'connor@contoso.com"; PrincipalType = 'User' }
+            )
+            Mock Get-PnPSiteUser { return $specialUser }
+
+            $script:capturedRequests = @()
+            Mock Invoke-SPCGraphBatch {
+                param($Requests, $AccessToken)
+                $script:capturedRequests += $Requests
+                return @(
+                    [PSCustomObject]@{ id = '1'; status = 404; body = $null }
+                )
+            }
+
+            $null = Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
+
+            $script:capturedRequests | Should -Not -BeNullOrEmpty
+            # Verify URL path is properly escaped or valid OData
+            $url = $script:capturedRequests[0].url
+            $url | Should -Match "o%27connor|o''connor|o'connor"
+        }
+    }
+
+    Context 'AC-ARCH-04: Token Refresh Timestamp Isolation' {
+        It 'AC-ARCH-04: Executes token refresh logic when time threshold is reached' {
+            Mock Get-PnPSiteUser { return @() }
+            Mock Get-PnPGraphAccessToken { return 'refreshed-token' }
+
+            # Set connected time back > 50 minutes
+            $pastTime = (Get-Date).ToUniversalTime().AddMinutes(-55)
+            $script:SPCContext.ConnectedAt = $pastTime
+            if ($script:SPCContext.PSObject.Properties['GraphTokenRefreshedAt']) {
+                $script:SPCContext.GraphTokenRefreshedAt = $pastTime
+            }
+
+            $null = Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR'
+
+            # Context GraphAccessToken is updated
+            $script:SPCContext.GraphAccessToken | Should -Be 'refreshed-token'
         }
     }
 

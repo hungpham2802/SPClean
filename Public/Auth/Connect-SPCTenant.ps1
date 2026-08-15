@@ -24,6 +24,8 @@ function Connect-SPCTenant {
         Path to .pfx certificate file. Used with AppOnly cert-based auth.
     .PARAMETER CertificatePassword
         SecureString password for the .pfx file. Never plain text.
+    .PARAMETER CertificateThumbprint
+        Certificate thumbprint in certificate store.
     .PARAMETER ClientSecret
         SecureString client secret. AppOnly alternative to certificate. Mutually exclusive with -CertificatePath.
     .EXAMPLE
@@ -36,8 +38,8 @@ function Connect-SPCTenant {
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param(
-        [Parameter(Mandatory)]
-        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string] $TenantName,
 
         [Parameter()]
@@ -146,28 +148,42 @@ function Connect-SPCTenant {
 
         $graphToken = Get-PnPGraphAccessToken -Connection $pnpContext
 
+        # Determine Operator UPN for Audit Trail
+        $operatorUPN = if ($AuthMethod -eq 'Interactive') {
+            # In interactive mode, prefer actual user principal name
+            if ($script:SPCContext -and $script:SPCContext.OperatorUPN) {
+                $script:SPCContext.OperatorUPN
+            } else {
+                "admin@$($shortName).onmicrosoft.com"
+            }
+        } else {
+            "AppOnly:$($ClientId)"
+        }
+
         # SRS 3.1.1 step 4 — store module-scoped context
         # _-prefixed fields are internal: used by Get-SPCOrphanedUser for per-site reconnects
         $script:SPCContext = [PSCustomObject]@{
-            TenantName           = $shortName
-            AuthMethod           = $AuthMethod
-            ConnectedAt          = $connectedAt
-            PnPContext           = $pnpContext
-            GraphAccessToken     = $graphToken
-            _ClientId            = $ClientId
+            TenantName             = $shortName
+            OperatorUPN            = $operatorUPN
+            AuthMethod             = $AuthMethod
+            ConnectedAt            = $connectedAt
+            GraphTokenRefreshedAt  = $connectedAt
+            PnPContext             = $pnpContext
+            GraphAccessToken       = $graphToken
+            _ClientId              = $ClientId
             _CertificateThumbprint = $CertificateThumbprint
-            _CertificatePath     = $CertificatePath
-            _CertificatePassword = $CertificatePassword   # SecureString — never plain text
-            _ClientSecret        = $ClientSecret          # SecureString — never plain text
+            _CertificatePath       = $CertificatePath
+            _CertificatePassword   = $CertificatePassword   # SecureString — never plain text
+            _ClientSecret          = $ClientSecret          # SecureString — never plain text
         }
 
-        # SRS 3.1.1 step 5 — pipeline output
+        # SRS 3.1.1 step 5 — pipeline output (sanitized without raw GraphAccessToken)
         $out = [PSCustomObject][ordered]@{
             TenantName       = $shortName
             AuthMethod       = $AuthMethod
             ConnectedAt      = $connectedAt
             ExpiresAt        = $connectedAt.AddHours(1)
-            GraphAccessToken = $graphToken
+            IsGraphConnected = [bool](-not [string]::IsNullOrWhiteSpace($graphToken))
         }
         $out.PSObject.TypeNames.Insert(0, 'SPC.ConnectionInfo')
         $out

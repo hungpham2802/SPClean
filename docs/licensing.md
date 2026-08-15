@@ -7,20 +7,33 @@ SPClean uses a **key-based license** verified entirely offline — no internet c
 | Feature | Free | Pro | Consultant |
 | --- | :---: | :---: | :---: |
 | **Price** | $0 forever | **$199 / tenant / year** | **$399 / year** |
-| Orphan detection (`Get-SPCOrphanedUser`) | ✅ | ✅ | ✅ |
-| CSV and JSON reports | ✅ | ✅ | ✅ |
+| **Scope & Tenants** | Single / Multi | Single tenant | **Unlimited tenants** |
+| **Permission Hygiene** | | | |
+| Orphan & Mismatch detection (`Get-SPCOrphanedUser`, `Get-SPCMismatchUser`) | ✅ | ✅ | ✅ |
+| CSV and JSON reports (`Export-SPCReport`) | ✅ | ✅ | ✅ |
 | Unlimited sites per scan | ✅ | ✅ | ✅ |
 | HTML report with risk badges and sorting | — | ✅ | ✅ |
 | Snapshot backup before removal (`-CreateSnapshot`) | — | ✅ | ✅ |
-| Restore permissions from snapshot | — | ✅ | ✅ |
-| Scheduled automated scans | — | ✅ | ✅ |
-| **Unlimited tenants** | — | — | ✅ |
-| White-label HTML report (`-BrandingName`) | — | — | ✅ |
-| Priority support | — | — | ✅ |
+| Restore permissions from snapshot (`Restore-SPCOrphanedUser`) | — | ✅ | ✅ |
+| Scheduled automated scans (`New-SPCScanSchedule`) | — | ✅ | ✅ |
+| **Storage Optimization** | | | |
+| Storage waste discovery (`Get-SPCStorageWaste`) | ✅ | ✅ | ✅ |
+| Version sprawl analytics (`Get-SPCVersionWaste`) | ✅ | ✅ | ✅ |
+| Inactive site & cost avoidance detection (`Get-SPCInactiveSite`) | ✅ | ✅ | ✅ |
+| Preservation Hold Library auditing (`Get-SPCPreservationHoldWaste`) | ✅ | ✅ | ✅ |
+| WhatIf / DryRun simulation modes | ✅ | ✅ | ✅ |
+| Storage CSV reports (`Export-SPCStorageReport -Format CSV`) | ✅ | ✅ | ✅ |
+| Executive HTML ROI Dashboard (`Export-SPCStorageReport -Format HTML`) | — | ✅ | ✅ |
+| Live 1st/2nd stage recycle bin purge (`Clear-SPCRecycleBin`) | — | ✅ | ✅ |
+| Live document version trimming (`Optimize-SPCFileVersion`) | — | ✅ | ✅ |
+| Automated document library version policy enforcement | — | ✅ | ✅ |
+| **Enterprise & MSP Features** | | | |
+| White-label HTML reports & dashboards (`-CompanyLogoUrl`, `-ClientName`) | — | — | ✅ |
+| Priority technical support | — | — | ✅ |
 | Intended use | Personal / evaluation | Single-org admin | MSP / multi-tenant consultant |
 
 !!! info "Free tier"
-    **Free** lets you scan every site and export CSV/JSON reports without a key — enough to identify and audit orphans. **Pro** and **Consultant** unlock the full remediation and automation workflow.
+    **Free** lets you scan every site collection, identify orphaned identities, analyze storage waste, and export CSV/JSON reports without a key — enough to perform comprehensive discovery and audits. **Pro** and **Consultant** unlock automated remediation, executive HTML ROI dashboards, and enterprise automation.
 
 [→ Purchase on Gumroad](https://ngochung47.gumroad.com/){ .md-button .md-button--primary }
 

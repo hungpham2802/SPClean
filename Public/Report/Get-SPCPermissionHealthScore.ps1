@@ -57,7 +57,7 @@ function Get-SPCPermissionHealthScore {
     process {
         Write-Verbose "Calculating score with inputs: Orphans=$OrphanedUserCount, Guests=$HighRiskGuestCount, OverPerm=$OverPermissionedUserCount, BrokenSites=$BrokenInheritanceSiteCount, MissingOwner=$MissingOwnerSiteCount"
         
-        $scoreResult = Calculate-SPCScoreInternal -OrphanedUserCount $OrphanedUserCount -HighRiskGuestCount $HighRiskGuestCount -OverPermissionedUserCount $OverPermissionedUserCount -BrokenInheritanceSiteCount $BrokenInheritanceSiteCount -MissingOwnerSiteCount $MissingOwnerSiteCount
+        $scoreResult = Measure-SPCScoreInternal -OrphanedUserCount $OrphanedUserCount -HighRiskGuestCount $HighRiskGuestCount -OverPermissionedUserCount $OverPermissionedUserCount -BrokenInheritanceSiteCount $BrokenInheritanceSiteCount -MissingOwnerSiteCount $MissingOwnerSiteCount
         
         Write-Information "Health score calculation completed successfully. Overall Score: $($scoreResult.OverallScore)"
         return $scoreResult

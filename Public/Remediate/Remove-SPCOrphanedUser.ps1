@@ -1,4 +1,4 @@
-﻿# Thin PS wrappers with [object] Connection so Pester can mock them without PnPConnection type coercion.
+# Thin PS wrappers with [object] Connection so Pester can mock them without PnPConnection type coercion.
 if (Get-Command -Name 'Remove-PnPUser' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
     $__pnpRemoveUser = Get-Command 'Remove-PnPUser' -Module PnP.PowerShell
     function Remove-PnPUser {
@@ -110,40 +110,6 @@ function Remove-SPCOrphanedUser {
     }
 
     end {
-        # Per-site connection scriptblock — mirrors Get-SPCOrphanedUser pattern
-        $connectToSite = {
-            param([string] $Url, [PSCustomObject] $Ctx)
-            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
-            switch ($Ctx.AuthMethod) {
-                'Interactive' {
-                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
-                    Connect-PnPOnline -Url $Url -AccessToken $token -ReturnConnection
-                }
-                'AppOnly' {
-                    if ($Ctx._CertificatePath) {
-                        Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -CertificatePath $Ctx._CertificatePath `
-                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    } elseif ($Ctx._CertificateThumbprint) {
-                        Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    } else {
-                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
-                        try {
-                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                            Connect-PnPOnline -Url $Url -ClientId $Ctx._ClientId `
-                                -ClientSecret $plain -ReturnConnection
-                        } finally {
-                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-                            $plain = $null
-                        }
-                    }
-                }
-            }
-        }
-
         # Apply RiskLevel and OrphanType filters
         $toProcess = @($collected | Where-Object {
             ($null -eq $RiskLevel  -or $RiskLevel  -contains $_.RiskLevel) -and
@@ -166,6 +132,7 @@ function Remove-SPCOrphanedUser {
 
         $ctx          = $script:SPCContext
         $removedCount = 0
+        $skippedCount = 0
         $errorCount   = 0
         $siteSet      = [System.Collections.Generic.HashSet[string]]::new()
         $siteCache    = @{}   # SiteUrl → PnP connection — avoid reconnecting per user
@@ -181,7 +148,7 @@ function Remove-SPCOrphanedUser {
             # -Confirm gate (bypassed by -Force)
             if (-not $Force) {
                 if (-not $PSCmdlet.ShouldProcess("$($item.UPN) at $($item.SiteUrl)", 'Remove-SPCOrphanedUser')) {
-                    $errorCount++
+                    $skippedCount++
                     continue
                 }
             }
@@ -189,7 +156,7 @@ function Remove-SPCOrphanedUser {
             # Establish site connection (cached per site)
             if (-not $siteCache.ContainsKey($item.SiteUrl)) {
                 try {
-                    $siteConn = & $connectToSite -Url $item.SiteUrl -Ctx $ctx
+                    $siteConn = Connect-SPCSiteInternal -SiteUrl $item.SiteUrl -Context $ctx
                     try {
                         Get-PnPWeb -Connection $siteConn -ErrorAction Stop | Out-Null
                     } catch [System.UnauthorizedAccessException], [System.Exception] {
@@ -206,7 +173,7 @@ function Remove-SPCOrphanedUser {
                                 Set-PnPTenantSite -Connection $ctx.PnPContext -Url $item.SiteUrl -Owners $myUPN -ErrorAction Stop
                                 $tempScaAdded[$item.SiteUrl] = $myUPN
                                 Start-Sleep -Seconds 5
-                                $siteConn = & $connectToSite -Url $item.SiteUrl -Ctx $ctx
+                                $siteConn = Connect-SPCSiteInternal -SiteUrl $item.SiteUrl -Context $ctx
                             } else {
                                 Write-Warning "Remove-SPCOrphanedUser: Access Denied on $($item.SiteUrl). You must be a Site Collection Administrator or use -AddTempSiteCollectionAdmin."
                                 throw "Access Denied"
@@ -245,9 +212,7 @@ function Remove-SPCOrphanedUser {
                         }
                     }
 
-                    # Group memberships (informational only — group-inherited roles are NOT
-                    # added to $snapPermList because restoring them would require the user
-                    # to be re-added to the group as a live Entra account, which is out of scope)
+                    # Group memberships
                     foreach ($gm in @($item.GroupMemberships)) {
                         if ([string]::IsNullOrWhiteSpace($gm)) { continue }
                         $snapGroupList.Add(@{ groupId = 0; groupName = [string]$gm })
@@ -329,9 +294,6 @@ function Remove-SPCOrphanedUser {
                 RemovedAt          = (Get-Date).ToUniversalTime()
             }
             $result.PSObject.TypeNames.Insert(0, 'SPC.RemovalResult')
-            # Override ToString so the result serialises to the same pattern as the summary,
-            # allowing Pester's $info | Should -Match 'Removed \d+ ...' to succeed when the
-            # result object and InformationRecord are both captured via 6>&1.
             $result | Add-Member -MemberType ScriptMethod -Name 'ToString' -Value {
                 $r = [int]$this.RemovedFromUIL
                 "Removed $r orphaned users across $r sites. Skipped $([int](-not $this.RemovedFromUIL)) due to errors (see error stream)."
@@ -351,7 +313,7 @@ function Remove-SPCOrphanedUser {
 
         # SRS step 6: summary to information stream (suppressed in WhatIf — nothing was executed)
         if (-not $WhatIfPreference) {
-            Write-Information "Removed $removedCount orphaned users across $($siteSet.Count) sites. Skipped $errorCount due to errors (see error stream)." -InformationAction Continue
+            Write-Information "Removed $removedCount orphaned users across $($siteSet.Count) sites. Skipped $skippedCount by user. $errorCount errors." -InformationAction Continue
         }
     }
 }

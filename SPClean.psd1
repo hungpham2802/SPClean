@@ -1,6 +1,6 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '1.5.2'
+    ModuleVersion     = '2.0.0'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'David Pham'          
     CompanyName       = 'M365Automation.com'       
@@ -30,24 +30,57 @@
         'Get-SPCOverPermissionedUser'
         'Get-SPCPermissionHealthScore'
         'Get-SPCBrokenInheritance'
-        'Compare-SPCPermissionSnapshot', 'Invoke-SPCDashboardReportV1', 'Invoke-SPCPermissionAnalyticsV2'
+        'Compare-SPCPermissionSnapshot'
+        'Invoke-SPCDashboardReport'
+        'Invoke-SPCPermissionAnalytics'
+        'Get-SPCStorageWaste'
+        'Get-SPCInactiveSite'
+        'Get-SPCVersionWaste'
+        'Get-SPCPreservationHoldWaste'
+        'Clear-SPCRecycleBin'
+        'Optimize-SPCFileVersion'
+        'Export-SPCStorageReport'
     )
 
     CmdletsToExport   = @()
-    AliasesToExport   = @()
+    AliasesToExport   = @(
+        'Invoke-SPCDashboardReportV1'
+        'Invoke-SPCPermissionAnalyticsV2'
+    )
     VariablesToExport = @()
 
     PrivateData       = @{
         PSData = @{
             Tags         = @('SharePoint', 'SPO', 'SharePointOnline', 'Orphaned',
                 'Cleanup', 'M365', 'MicrosoftGraph', 'PnP',
-                'Governance', 'Remediation', 'EntraID')
+                'Governance', 'Remediation', 'EntraID', 'Storage', 'Optimization')
             ProjectUri   = 'https://github.com/hungpham2802/SPClean'
             LicenseUri   = 'https://github.com/hungpham2802/SPClean/blob/main/LICENSE'
             ReleaseNotes = @'
+## 2.0.0 - 2026-08-15
+- Major Feature: SharePoint Online Storage Optimization & Digital Waste Management.
+- New Scan Cmdlets: `Get-SPCStorageWaste`, `Get-SPCInactiveSite`, `Get-SPCVersionWaste`, `Get-SPCPreservationHoldWaste`.
+- New Remediation Cmdlets: `Clear-SPCRecycleBin` (safe 1st & 2nd stage purge with `-DryRun` / `-WhatIf`), `Optimize-SPCFileVersion` (version history trimming and policy enforcement).
+- New Reporting Cmdlet: `Export-SPCStorageReport` (Executive standalone HTML ROI Dashboard with interactive slider and CSV audit dataset).
+- Security & Compliance: Non-destructive Microsoft Purview Preservation Hold Library (PHL) immunity protection.
+- Architecture: Centralized PnP wrapper layer in `Private/PnPWrappers.ps1` with PnP 3.2.0 compatibility and zero unmanaged memory residue (`ZeroFreeBSTR`).
+- Performance: Exponential backoff with jitter retry on Microsoft Graph 429 throttling and automatic fallback to SharePoint Online Admin API.
+
+## 1.6.0 - 2026-08-14
+- Security: Connect-SPCTenant pipeline output sanitized to remove raw GraphAccessToken; provides IsGraphConnected and TokenExpiresAt.
+- Security: Get-SPCOrphanedUser escapes single quotes and URI encodes UPNs in Graph OData queries.
+- Refactor: Standardized cmdlet names Invoke-SPCDashboardReport and Invoke-SPCPermissionAnalytics with backward-compatible aliases.
+- Refactor: Centralized per-site connection logic into Private/Connect-SPCSiteInternal.ps1.
+- Refactor: Renamed scoring engine to Measure-SPCScoreInternal adhering to PowerShell approved verbs.
+- Refactor: Separated skippedCount from errorCount in Remove-SPCOrphanedUser.
+- Architecture: Snapshot schema bumped to v1.1 with isEmptyPermissionSet flag; Restore-SPCOrphanedUser supports both v1.0 and v1.1.
+
+## 1.5.2 - 2026-08-01
+- Feature: Permission Health Score calculation and broken inheritance analytics.
+
 ## 1.3.0 - 2026-07-17
-- Feature (Module 2): Added `Get-SPCMismatchUser` to detect User ID Mismatches between SharePoint UIL and Entra ID.
-- Feature (Module 2): Added `Repair-SPCMismatchUser` to automatically backup, clean, and restore Web and List level permissions for mismatched users.
+- Feature: Added `Get-SPCMismatchUser` to detect User ID Mismatches between SharePoint UIL and Entra ID.
+- Feature: Added `Repair-SPCMismatchUser` to automatically backup, clean, and restore Web and List level permissions for mismatched users.
 
 ## 1.2.3 - 2026-07-15
 - Fix: Guest users are now correctly skipped during Mismatch Repair.
@@ -89,4 +122,3 @@
         }
     }
 }
-
