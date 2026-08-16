@@ -87,4 +87,28 @@ Describe 'New-SPCStorageDashboardHtmlInternal Unit Tests' -Tag 'Reporting', 'Int
             $content | Should -Match 'Digital Waste Identified'
         }
     }
+
+    Context 'TC-HTML-004: JavaScript Table Rendering Syntax Integrity' {
+        It 'TC-HTML-004.1: Should render valid JavaScript table population without stripped template backticks' {
+            $outputPath = Join-Path -Path $TestHtmlDir -ChildPath 'js_syntax_dashboard.html'
+            $mockData = @(
+                [PSCustomObject]@{
+                    SiteUrl                   = 'https://contoso.sharepoint.com/sites/Test'
+                    SiteTitle                 = 'Test Site'
+                    StorageUsedMB             = 500.0
+                    TotalRecycleBinMB         = 100.0
+                    VersionWasteMB            = 50.0
+                    TotalWasteMB              = 150.0
+                    PotentialMonthlySavingUSD = 0.03
+                }
+            )
+
+            New-SPCStorageDashboardHtmlInternal -StorageWasteData $mockData -OutputPath $outputPath -UnitPricePerGB 0.20
+
+            $content = Get-Content -Path $outputPath -Raw
+            # Verify JS string concatenation is correctly generated
+            $content | Should -Match "tr\.innerHTML = '<td><a href=""' \+ s\.SiteUrl"
+            $content | Should -Not -Match "tr\.innerHTML =\s+<td><a href="
+        }
+    }
 }

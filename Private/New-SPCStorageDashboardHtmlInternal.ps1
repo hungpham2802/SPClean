@@ -178,14 +178,12 @@ function New-SPCStorageDashboardHtmlInternal {
     if (!appData.sites || appData.sites.length === 0) return;
     appData.sites.slice(0, 20).forEach(s => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td><a href="` + s.SiteUrl + `" target="_blank" style="color:var(--accent);text-decoration:none;">` + s.SiteUrl + `</a></td>
-        <td>` + s.StorageUsedMB + `</td>
-        <td>` + s.TotalRecycleBinMB + `</td>
-        <td>` + s.VersionWasteMB + `</td>
-        <td style="font-weight:bold;color:var(--accent-orange);">` + s.TotalWasteMB + `</td>
-        <td style="color:var(--accent-green);font-weight:bold;">$` + s.PotentialMonthlySavingUSD + `</td>
-      `;
+      tr.innerHTML = '<td><a href="' + s.SiteUrl + '" target="_blank" style="color:var(--accent);text-decoration:none;">' + s.SiteUrl + '</a></td>' +
+        '<td>' + s.StorageUsedMB + '</td>' +
+        '<td>' + s.TotalRecycleBinMB + '</td>' +
+        '<td>' + s.VersionWasteMB + '</td>' +
+        '<td style="font-weight:bold;color:var(--accent-orange);">' + s.TotalWasteMB + '</td>' +
+        '<td style="color:var(--accent-green);font-weight:bold;">$' + s.PotentialMonthlySavingUSD + '</td>';
       tbody.appendChild(tr);
     });
   }
