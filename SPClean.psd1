@@ -1,6 +1,6 @@
 @{
     RootModule        = 'SPClean.psm1'
-    ModuleVersion     = '2.1.0'
+    ModuleVersion     = '2.1.1'
     GUID              = 'a9e193ea-b393-4c4a-ac23-ab50dceef965'
     Author            = 'David Pham'          
     CompanyName       = 'M365Automation.com'       
@@ -57,11 +57,14 @@
             ProjectUri   = 'https://github.com/hungpham2802/SPClean'
             LicenseUri   = 'https://github.com/hungpham2802/SPClean/blob/main/LICENSE'
             ReleaseNotes = @'
-## 2.0.0 - 2026-08-15
-- Major Feature: SharePoint Online Storage Optimization & Digital Waste Management.
-- New Scan Cmdlets: `Get-SPCStorageWaste`, `Get-SPCInactiveSite`, `Get-SPCVersionWaste`, `Get-SPCPreservationHoldWaste`.
-- New Remediation Cmdlets: `Clear-SPCRecycleBin` (safe 1st & 2nd stage purge with `-DryRun` / `-WhatIf`), `Optimize-SPCFileVersion` (version history trimming and policy enforcement).
-- New Reporting Cmdlet: `Export-SPCStorageReport` (Executive standalone HTML ROI Dashboard with interactive slider and CSV audit dataset).
+## 2.1.1 - 2026-08-16
+- Fix: Resolved JavaScript SyntaxError in `Export-SPCStorageReport` / `New-SPCStorageDashboardHtmlInternal` where ES6 template literals inside PowerShell here-strings caused empty Top Storage Waste Sites tables.
+
+## 2.1.0 - 2026-08-16
+- Fixed: Resolved site URLs via PnP SiteId when M365 privacy concealment is enabled in Microsoft 365 Admin Center reports.
+- Fixed: Enhanced interactive token resolution to acquire dedicated SharePoint resource tokens for individual site connections and filter out redirect sites.
+- Fixed: Properly hydrate CSOM Site.Usage properties via Get-PnPProperty to retrieve exact storage metrics in PnP PowerShell 3.2+.
+- Fixed: Resilient scanning when auditing storage waste on preservation hold sites.
 - Security & Compliance: Non-destructive Microsoft Purview Preservation Hold Library (PHL) immunity protection.
 - Architecture: Centralized PnP wrapper layer in `Private/PnPWrappers.ps1` with PnP 3.2.0 compatibility and zero unmanaged memory residue (`ZeroFreeBSTR`).
 - Performance: Exponential backoff with jitter retry on Microsoft Graph 429 throttling and automatic fallback to SharePoint Online Admin API.
