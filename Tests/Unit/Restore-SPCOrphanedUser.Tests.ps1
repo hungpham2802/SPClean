@@ -8,6 +8,9 @@ BeforeAll {
     . (Join-Path $privateDir 'PnPWrappers.ps1')
     . (Join-Path $privateDir 'Test-SPCConnection.ps1')
     . (Join-Path $privateDir 'LicenseManager.ps1')
+    if (Test-Path (Join-Path $publicDir 'License\Get-SPCLicenseInfo.ps1')) {
+        . (Join-Path $publicDir 'License\Get-SPCLicenseInfo.ps1')
+    }
     if (Test-Path (Join-Path $privateDir 'Connect-SPCSiteInternal.ps1')) {
         . (Join-Path $privateDir 'Connect-SPCSiteInternal.ps1')
     }

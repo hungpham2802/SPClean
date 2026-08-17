@@ -4,7 +4,7 @@ function Invoke-SPCTempElevationInternal {
         Elevates current interactive operator to Site Collection Administrator, Group Owner, or Site Permission Holder temporarily.
     .DESCRIPTION
         Implements multi-strategy elevation with fallback for SharePoint Online.
-        Strategy 1: CSOM Set-PnPTenantSite (with both UPN and Claims login formats).
+        Strategy 1: CSOM Set-PnPTenantSite -Identity (with both UPN and Claims login formats).
         Strategy 2: Tenant REST API /_api/SPO.Tenant/SetSiteAdmin.
         Strategy 3: Microsoft Graph API M365 Group Owner addition if site is connected to an M365 Group.
         Strategy 4: Microsoft Graph API Site Permission role addition (/sites/{siteId}/permissions).
@@ -44,23 +44,35 @@ function Invoke-SPCTempElevationInternal {
             }
         }
 
-        # Resolve Operator UPN
-        $myUPN = if ($Context.OperatorUPN -and $Context.OperatorUPN -notlike 'AppOnly:*') {
-            $Context.OperatorUPN
+        # Resolve Operator UPN and User Object ID
+        $myUPN = $null
+        $userOid = $null
+        $graphHeaders = if ($Context.GraphAccessToken) {
+            @{ Authorization = "Bearer $($Context.GraphAccessToken)"; 'Content-Type' = 'application/json' }
         } else {
+            $null
+        }
+
+        if ($graphHeaders) {
             try {
-                (Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($Context.GraphAccessToken)" } -ErrorAction Stop).userPrincipalName
-            } catch {
+                $me = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me?`$select=id,displayName,userPrincipalName" -Headers $graphHeaders -ErrorAction Stop
+                $myUPN = $me.userPrincipalName
+                $userOid = $me.id
+            } catch {}
+        }
+
+        if (-not $myUPN) {
+            if ($Context.OperatorUPN -and $Context.OperatorUPN -notlike 'AppOnly:*') {
+                $myUPN = $Context.OperatorUPN
+            } else {
                 try {
-                    (Get-MgContext).Account
-                } catch {
-                    if ($Context.TenantName) {
-                        "admin@$($Context.TenantName).onmicrosoft.com"
-                    } else {
-                        $null
-                    }
-                }
+                    $myUPN = (Get-MgContext).Account
+                } catch {}
             }
+        }
+
+        if (-not $myUPN -and $Context.TenantName) {
+            $myUPN = "admin@$($Context.TenantName).onmicrosoft.com"
         }
 
         if (-not $myUPN) {
@@ -79,11 +91,11 @@ function Invoke-SPCTempElevationInternal {
         $claimsLogin = if ($myUPN -match "\|membership\|") { $myUPN } else { "i:0#.f|membership|$myUPN" }
         $errors = [System.Collections.Generic.List[string]]::new()
 
-        # Strategy 1A & 1B: CSOM Tenant Site Owner (Set-PnPTenantSite)
+        # Strategy 1A & 1B: CSOM Tenant Site Owner (Set-PnPTenantSite -Identity)
         if ($Context.PnPContext) {
             try {
-                Write-Verbose "Invoke-SPCTempElevationInternal: Strategy 1A - CSOM Set-PnPTenantSite (UPN)..."
-                Set-PnPTenantSite -Connection $Context.PnPContext -Url $SiteUrl -Owners $myUPN -ErrorAction Stop
+                Write-Verbose "Invoke-SPCTempElevationInternal: Strategy 1A - CSOM Set-PnPTenantSite (UPN: $myUPN)..."
+                Set-PnPTenantSite -Connection $Context.PnPContext -Identity $SiteUrl -Owners $myUPN -ErrorAction Stop
                 Start-Sleep -Seconds 5
                 return [PSCustomObject]@{
                     Success       = $true
@@ -100,8 +112,8 @@ function Invoke-SPCTempElevationInternal {
             }
 
             try {
-                Write-Verbose "Invoke-SPCTempElevationInternal: Strategy 1B - CSOM Set-PnPTenantSite (Claims)..."
-                Set-PnPTenantSite -Connection $Context.PnPContext -Url $SiteUrl -Owners $claimsLogin -ErrorAction Stop
+                Write-Verbose "Invoke-SPCTempElevationInternal: Strategy 1B - CSOM Set-PnPTenantSite (Claims: $claimsLogin)..."
+                Set-PnPTenantSite -Connection $Context.PnPContext -Identity $SiteUrl -Owners $claimsLogin -ErrorAction Stop
                 Start-Sleep -Seconds 5
                 return [PSCustomObject]@{
                     Success       = $true
@@ -143,7 +155,7 @@ function Invoke-SPCTempElevationInternal {
         }
 
         # Strategy 3: Graph API M365 Group Owner Elevation
-        if ($Context.GraphAccessToken) {
+        if ($graphHeaders) {
             try {
                 Write-Verbose "Invoke-SPCTempElevationInternal: Strategy 3 - Microsoft Graph M365 Group Owner..."
                 $uri = [System.Uri]$SiteUrl
@@ -151,11 +163,10 @@ function Invoke-SPCTempElevationInternal {
                 $sitePath = $uri.AbsolutePath.Trim('/')
                 $alias = $sitePath.Split('/')[-1]
 
-                $graphHeaders = @{ Authorization = "Bearer $($Context.GraphAccessToken)"; 'Content-Type' = 'application/json' }
-                
-                # Get Operator Object ID
-                $userObj = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/users/$myUPN?`$select=id" -Headers $graphHeaders -ErrorAction Stop
-                $userOid = $userObj.id
+                if (-not $userOid) {
+                    $userObj = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/users/$([System.Uri]::EscapeDataString($myUPN))?`$select=id" -Headers $graphHeaders -ErrorAction Stop
+                    $userOid = $userObj.id
+                }
 
                 # Try finding group by alias or mailNickname
                 $groupSearchResult = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/groups?`$filter=mailNickname eq '$alias' or displayName eq '$alias'&`$select=id" -Headers $graphHeaders -ErrorAction SilentlyContinue
@@ -190,21 +201,22 @@ function Invoke-SPCTempElevationInternal {
                 $uri = [System.Uri]$SiteUrl
                 $hostName = $uri.Host
                 $sitePath = $uri.AbsolutePath.Trim('/')
-                $graphHeaders = @{ Authorization = "Bearer $($Context.GraphAccessToken)"; 'Content-Type' = 'application/json' }
 
                 $siteInfo = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/sites/${hostName}:/${sitePath}?`$select=id" -Headers $graphHeaders -ErrorAction Stop
                 if ($siteInfo -and $siteInfo.id) {
                     $siteId = $siteInfo.id
-                    $userObj = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/users/$myUPN?`$select=id,displayName,userPrincipalName" -Headers $graphHeaders -ErrorAction Stop
+                    if (-not $userOid) {
+                        $userObj = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/users/$([System.Uri]::EscapeDataString($myUPN))?`$select=id,displayName,userPrincipalName" -Headers $graphHeaders -ErrorAction Stop
+                        $userOid = $userObj.id
+                    }
                     
                     $permBody = @{
                         roles = @("write", "owner")
                         grantedToIdentities = @(
                             @{
                                 user = @{
-                                    id                = $userObj.id
-                                    displayName       = $userObj.displayName
-                                    userPrincipalName = $userObj.userPrincipalName
+                                    id                = $userOid
+                                    userPrincipalName = $myUPN
                                 }
                             }
                         )

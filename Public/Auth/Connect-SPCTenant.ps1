@@ -151,7 +151,18 @@ function Connect-SPCTenant {
         # Determine Operator UPN for Audit Trail
         $operatorUPN = if ($AuthMethod -eq 'Interactive') {
             # In interactive mode, prefer actual user principal name
-            if ($script:SPCContext -and $script:SPCContext.OperatorUPN) {
+            $realUpn = $null
+            try {
+                $realUpn = (Get-MgContext).Account
+            } catch {}
+            if (-not $realUpn -and $graphToken) {
+                try {
+                    $realUpn = (Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $graphToken" } -ErrorAction SilentlyContinue).userPrincipalName
+                } catch {}
+            }
+            if ($realUpn) {
+                $realUpn
+            } elseif ($script:SPCContext -and $script:SPCContext.OperatorUPN) {
                 $script:SPCContext.OperatorUPN
             } else {
                 "admin@$($shortName).onmicrosoft.com"

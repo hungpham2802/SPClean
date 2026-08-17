@@ -1,36 +1,3 @@
-# PS wrappers with [object] Connection so Pester mocks don't enforce PnPConnection type coercion.
-if (Get-Command -Name 'Get-PnPWeb' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
-    $__pnpGetWeb = Get-Command 'Get-PnPWeb' -Module PnP.PowerShell
-    function Get-PnPWeb {
-        [CmdletBinding()] param([object]$Connection)
-        & $__pnpGetWeb @PSBoundParameters
-    }
-}
-if (Get-Command -Name 'Add-PnPGroupMember' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
-    $__pnpAddGroupMember = Get-Command 'Add-PnPGroupMember' -Module PnP.PowerShell
-    function Add-PnPGroupMember {
-        [CmdletBinding()] param([string]$LoginName, [object]$Group, [object]$Connection)
-        & $__pnpAddGroupMember @PSBoundParameters
-    }
-}
-
-# PnP 3.x removed Add-PnPRoleAssignment; wrap Set-PnPWebPermission -AddRole.
-function Add-PnPRoleAssignment {
-    [CmdletBinding()]
-    param(
-        [Parameter()] [string] $LoginName,
-        [Parameter()] [string] $RoleDefinitionName,
-        [Parameter()] [int]    $RoleDefinitionId,
-        [Parameter()] [object] $Connection
-    )
-    if (-not [string]::IsNullOrWhiteSpace($RoleDefinitionName)) {
-        Set-PnPWebPermission -User $LoginName -AddRole $RoleDefinitionName -Connection $Connection -ErrorAction Stop
-    } else {
-        $rd = Get-PnPRoleDefinition -Identity $RoleDefinitionId -Connection $Connection -ErrorAction Stop
-        Set-PnPWebPermission -User $LoginName -AddRole $rd.Name -Connection $Connection -ErrorAction Stop
-    }
-}
-
 function Restore-SPCOrphanedUser {
     <#
     .SYNOPSIS
@@ -63,7 +30,10 @@ function Restore-SPCOrphanedUser {
         Test-SPCConnection
         Assert-SPCProLicense -Feature 'RestoreSnapshot'
 
-        $resolvedSnap = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($SnapshotPath)
+        $resolvedSnap = $SnapshotPath
+        if ($ExecutionContext -and $ExecutionContext.SessionState -and ($p = $ExecutionContext.SessionState.Path)) {
+            $resolvedSnap = $p.GetUnresolvedProviderPathFromPSPath($SnapshotPath)
+        }
         if (-not (Test-Path -Path $resolvedSnap -PathType Leaf)) {
             throw "Restore-SPCOrphanedUser: Snapshot file not found: '$resolvedSnap'"
         }

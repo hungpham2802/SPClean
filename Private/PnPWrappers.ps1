@@ -217,12 +217,22 @@ function Get-PnPGroupMember {
 function Set-PnPTenantSite {
     [CmdletBinding()]
     param(
-        [Parameter()] [object]$Connection,
-        [Parameter()] [string]$Url,
-        [Parameter()] [string[]]$Owners
+        [Parameter(Position=0, ValueFromPipelineByPropertyName=$true)]
+        [Alias('Url')]
+        [string]$Identity,
+
+        [Parameter()]
+        [string[]]$Owners,
+
+        [Parameter()]
+        [object]$Connection
     )
     if (Get-Command -Name 'Set-PnPTenantSite' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
-        & (Get-Command -Name 'Set-PnPTenantSite' -Module PnP.PowerShell) @PSBoundParameters
+        $bound = @{}
+        if ($Identity) { $bound['Identity'] = $Identity }
+        if ($Owners) { $bound['Owners'] = $Owners }
+        if ($Connection) { $bound['Connection'] = $Connection }
+        & (Get-Command -Name 'Set-PnPTenantSite' -Module PnP.PowerShell) @bound
     }
 }
 
@@ -297,5 +307,57 @@ function Get-PnPUser {
             $params.Remove('LoginName') | Out-Null
         }
         & (Get-Command -Name 'Get-PnPUser' -Module PnP.PowerShell) @params
+    }
+}
+
+function Add-PnPGroupMember {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [string]$LoginName,
+        [Parameter()] [object]$Group,
+        [Parameter()] [object]$Connection
+    )
+    if (Get-Command -Name 'Add-PnPGroupMember' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Add-PnPGroupMember' -Module PnP.PowerShell) @PSBoundParameters
+    }
+}
+
+function Set-PnPWebPermission {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [string]$User,
+        [Parameter()] [string]$AddRole,
+        [Parameter()] [string]$RemoveRole,
+        [Parameter()] [object]$Connection
+    )
+    if (Get-Command -Name 'Set-PnPWebPermission' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Set-PnPWebPermission' -Module PnP.PowerShell) @PSBoundParameters
+    }
+}
+
+function Get-PnPRoleDefinition {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [object]$Identity,
+        [Parameter()] [object]$Connection
+    )
+    if (Get-Command -Name 'Get-PnPRoleDefinition' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Get-PnPRoleDefinition' -Module PnP.PowerShell) @PSBoundParameters
+    }
+}
+
+function Add-PnPRoleAssignment {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [string] $LoginName,
+        [Parameter()] [string] $RoleDefinitionName,
+        [Parameter()] [int]    $RoleDefinitionId,
+        [Parameter()] [object] $Connection
+    )
+    if (-not [string]::IsNullOrWhiteSpace($RoleDefinitionName)) {
+        Set-PnPWebPermission -User $LoginName -AddRole $RoleDefinitionName -Connection $Connection -ErrorAction Stop
+    } else {
+        $rd = Get-PnPRoleDefinition -Identity $RoleDefinitionId -Connection $Connection -ErrorAction Stop
+        Set-PnPWebPermission -User $LoginName -AddRole $rd.Name -Connection $Connection -ErrorAction Stop
     }
 }
