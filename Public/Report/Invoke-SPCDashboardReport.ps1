@@ -15,7 +15,10 @@ function Invoke-SPCDashboardReport {
     param (
         [Parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
-        [string]$OutputPath = ".\Dashboard.html"
+        [string]$OutputPath = ".\Dashboard.html",
+
+        [Parameter(Mandatory = $false)]
+        [switch]$AddTempSiteCollectionAdmin
     )
 
     begin {
@@ -25,17 +28,22 @@ function Invoke-SPCDashboardReport {
     }
 
     process {
+        $scanParams = @{}
+        if ($AddTempSiteCollectionAdmin) {
+            $scanParams['AddTempSiteCollectionAdmin'] = $true
+        }
+
         Write-Verbose "Running Get-SPCOrphanedUser scan across all sites..."
-        $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled)
+        $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled @scanParams)
 
         Write-Verbose "Running Get-SPCGuestAccess scan..."
         $guests = @(Get-SPCGuestAccess -ErrorAction SilentlyContinue)
 
         Write-Verbose "Running Get-SPCPrivilegedUser scan..."
-        $privileged = @(Get-SPCPrivilegedUser -ErrorAction SilentlyContinue)
+        $privileged = @(Get-SPCPrivilegedUser @scanParams -ErrorAction SilentlyContinue)
 
         Write-Verbose "Running Get-SPCOverPermissionedUser scan..."
-        $overPermissioned = @(Get-SPCOverPermissionedUser -ErrorAction SilentlyContinue)
+        $overPermissioned = @(Get-SPCOverPermissionedUser @scanParams -ErrorAction SilentlyContinue)
 
         # Calculate summary metrics
         $totalOrphaned = $orphans.Count

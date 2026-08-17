@@ -20,7 +20,10 @@ function Invoke-SPCPermissionAnalytics {
         [string]$OutputPath = ".\Analytics.json",
 
         [Parameter(Mandatory = $false)]
-        [int]$BrokenInheritanceThreshold = 1000
+        [int]$BrokenInheritanceThreshold = 1000,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$AddTempSiteCollectionAdmin
     )
 
     begin {
@@ -30,14 +33,19 @@ function Invoke-SPCPermissionAnalytics {
     }
 
     process {
+        $scanParams = @{}
+        if ($AddTempSiteCollectionAdmin) {
+            $scanParams['AddTempSiteCollectionAdmin'] = $true
+        }
+
         Write-Verbose "Running scans for Analytics..."
-        $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled)
+        $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled @scanParams)
         $OrphanedUserCount = $orphans.Count
 
         $guests = @(Get-SPCGuestAccess -ErrorAction SilentlyContinue)
         $HighRiskGuestCount = @($guests | Where-Object { $_.RiskLevel -eq 'HIGH' }).Count
 
-        $overPermissioned = @(Get-SPCOverPermissionedUser -ErrorAction SilentlyContinue)
+        $overPermissioned = @(Get-SPCOverPermissionedUser @scanParams -ErrorAction SilentlyContinue)
         $OverPermissionedUserCount = $overPermissioned.Count
 
         $tenantSites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext -ErrorAction SilentlyContinue
@@ -55,7 +63,7 @@ function Invoke-SPCPermissionAnalytics {
 
             # Broken inheritance check
             try {
-                $broken = Get-SPCBrokenInheritance -SiteUrl $site.Url -ErrorAction SilentlyContinue
+                $broken = Get-SPCBrokenInheritance -SiteUrl $site.Url @scanParams -ErrorAction SilentlyContinue
                 if ($broken.UniqueScopes -gt $BrokenInheritanceThreshold) {
                     $BrokenInheritanceSiteCount++
                 }
