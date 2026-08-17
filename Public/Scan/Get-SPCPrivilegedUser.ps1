@@ -17,9 +17,12 @@ function Get-SPCPrivilegedUser {
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param (
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $false, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$SiteUrl
+        [string]$SiteUrl,
+
+        [Parameter()]
+        [switch]$AddTempSiteCollectionAdmin
     )
 
     begin {
@@ -28,42 +31,6 @@ function Get-SPCPrivilegedUser {
             Test-SPCConnection
         }
         $tempResults = [System.Collections.Generic.List[PSCustomObject]]::new()
-        
-        $connectToSite = {
-            param([string] $SiteUrl, [PSCustomObject] $Ctx)
-            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
-            switch ($Ctx.AuthMethod) {
-                'Interactive' {
-                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
-                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
-                }
-                'AppOnly' {
-                    if ($Ctx._CertificatePath) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -CertificatePath $Ctx._CertificatePath `
-                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    }
-                    elseif ($Ctx._CertificateThumbprint) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    }
-                    else {
-                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
-                        try {
-                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                            Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                                -ClientSecret $plain -ReturnConnection
-                        }
-                        finally {
-                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-                            $plain = $null
-                        }
-                    }
-                }
-            }
-        }
     }
 
     process {
@@ -85,6 +52,10 @@ function Get-SPCPrivilegedUser {
                 Write-Progress -Activity "Scanning Sites for Privileged Users" -Status "Processing site $url ($counter / $totalSites)" -PercentComplete (($counter / $totalSites) * 100)
                 Write-Verbose "Scanning site: $url"
 
+                $removeSca = $false
+                $myUPN = $null
+                $siteConnection = $null
+
                 try {
                     $retryCount = 0
                     $maxRetries = 5
@@ -92,50 +63,66 @@ function Get-SPCPrivilegedUser {
                     
                     while (-not $success -and $retryCount -lt $maxRetries) {
                         try {
-                            $siteConnection = & $connectToSite -SiteUrl $url -Ctx $script:SPCContext
+                            $siteConnection = Connect-SPCSiteInternal -SiteUrl $url -Context $script:SPCContext
                             
-                            # 1. SCAs - Use Get-PnPSiteCollectionAdmin to avoid large list thresholds
-                            $scas = Get-PnPSiteCollectionAdmin -Connection $siteConnection -ErrorAction SilentlyContinue
-                            foreach ($sca in $scas) {
-                                if (-not [string]::IsNullOrEmpty($sca.LoginName) -and $sca.LoginName -match "\|membership\|") {
-                                    $upn = $sca.LoginName.Split("|")[-1]
-                                    $tempResults.Add([PSCustomObject]@{
-                                            UPN              = $upn
-                                            SiteUrl          = $url
-                                            PermissionSource = "SCA"
-                                        })
-                                }
-                            }
-
-                            # 2. Owners Group
-                            $ownersGroup = Get-PnPGroup -AssociatedOwnerGroup -Connection $siteConnection -ErrorAction SilentlyContinue
-                            if ($ownersGroup) {
-                                $ownerMembers = Get-PnPGroupMember -Group $ownersGroup.Title -Connection $siteConnection -ErrorAction SilentlyContinue
-                                foreach ($member in $ownerMembers) {
-                                    if (-not [string]::IsNullOrEmpty($member.LoginName) -and $member.LoginName -match "\|membership\|") {
-                                        $upn = $member.LoginName.Split("|")[-1]
+                            # 1. SCAs - Use Get-PnPSiteCollectionAdmin
+                            $scas = Get-PnPSiteCollectionAdmin -Connection $siteConnection -ErrorAction Stop
+                            if ($scas) {
+                                foreach ($sca in $scas) {
+                                    if (-not [string]::IsNullOrEmpty($sca.LoginName) -and $sca.LoginName -match "\|membership\|") {
+                                        $upn = $sca.LoginName.Split("|")[-1]
                                         $tempResults.Add([PSCustomObject]@{
                                                 UPN              = $upn
                                                 SiteUrl          = $url
-                                                PermissionSource = "Owner"
+                                                PermissionSource = "SCA"
                                             })
                                     }
                                 }
                             }
 
+                            # 2. Owners Group
+                            $ownersGroup = $null
+                            try {
+                                $ownersGroup = Get-PnPGroup -AssociatedOwnerGroup -Connection $siteConnection -ErrorAction SilentlyContinue
+                            } catch {}
+                            if (-not $ownersGroup) {
+                                try {
+                                    $web = Get-PnPWeb -Connection $siteConnection -ErrorAction SilentlyContinue
+                                    if ($web -and $web.AssociatedOwnerGroup) {
+                                        $ownersGroup = $web.AssociatedOwnerGroup
+                                    }
+                                } catch {}
+                            }
+                            if ($ownersGroup) {
+                                $ownerMembers = Get-PnPGroupMember -Group $ownersGroup -Connection $siteConnection -ErrorAction SilentlyContinue
+                                if ($ownerMembers) {
+                                    foreach ($member in $ownerMembers) {
+                                        if (-not [string]::IsNullOrEmpty($member.LoginName) -and $member.LoginName -match "\|membership\|") {
+                                            $upn = $member.LoginName.Split("|")[-1]
+                                            $tempResults.Add([PSCustomObject]@{
+                                                    UPN              = $upn
+                                                    SiteUrl          = $url
+                                                    PermissionSource = "Owner"
+                                                })
+                                        }
+                                    }
+                                }
+                            }
+
                             # 3. Direct Assignments (Full Control)
-                            # Use REST API to bypass missing Get-PnPRoleAssignment in PnP 3.x
                             $roleAssignments = (Invoke-PnPSPRestMethod -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -Connection $siteConnection -ErrorAction SilentlyContinue).value
-                            foreach ($ra in $roleAssignments) {
-                                $isFullControl = $ra.RoleDefinitionBindings | Where-Object { $_.Name -eq 'Full Control' }
-                                if ($isFullControl) {
-                                    if ($ra.Member.PrincipalType -in 'User', 1 -and $ra.Member.LoginName -match "\|membership\|") {
-                                        $upn = $ra.Member.LoginName.Split("|")[-1]
-                                        $tempResults.Add([PSCustomObject]@{
-                                                UPN              = $upn
-                                                SiteUrl          = $url
-                                                PermissionSource = "Direct"
-                                            })
+                            if ($roleAssignments) {
+                                foreach ($ra in $roleAssignments) {
+                                    $isFullControl = $ra.RoleDefinitionBindings | Where-Object { $_.Name -eq 'Full Control' }
+                                    if ($isFullControl) {
+                                        if ($ra.Member.PrincipalType -in 'User', 1 -and $ra.Member.LoginName -match "\|membership\|") {
+                                            $upn = $ra.Member.LoginName.Split("|")[-1]
+                                            $tempResults.Add([PSCustomObject]@{
+                                                    UPN              = $upn
+                                                    SiteUrl          = $url
+                                                    PermissionSource = "Direct"
+                                                })
+                                        }
                                     }
                                 }
                             }
@@ -151,17 +138,51 @@ function Get-SPCPrivilegedUser {
                                     $retryAfter = $ex.Response.Headers["Retry-After"]
                                 }
                                 
-                                if ($retryAfter) {
-                                    $waitTime = [int]$retryAfter
-                                }
-                                else {
-                                    $waitTime = [Math]::Pow(2, $retryCount)
-                                }
+                                $waitTime = if ($retryAfter) { [int]$retryAfter } else { [Math]::Pow(2, $retryCount) }
                                 
                                 Write-Verbose "Throttled (429/503). Retrying in $waitTime seconds (Attempt $retryCount of $maxRetries)..."
                                 Start-Sleep -Seconds $waitTime
                                 if ($retryCount -eq $maxRetries) {
                                     Write-Error "[ERR-GPU-001] $(Get-Date -Format 'o'): Failed to process site collection '$url' after $maxRetries attempts due to throttling. Resource: $url." -ErrorAction Continue
+                                }
+                            }
+                            elseif ($ex.Message -match "401" -or $ex.Message -match "403" -or $ex.Message -match "Access denied" -or $ex.Message -match "Unauthorized") {
+                                if ($AddTempSiteCollectionAdmin) {
+                                    $authMethod = if ($script:SPCContext.AuthMethod) { $script:SPCContext.AuthMethod } else { $script:SPCContext.AuthMode }
+                                    if ($authMethod -ne 'Interactive') {
+                                        Write-Error "[ERR-GPU-004] $(Get-Date -Format 'o'): Access Denied on '$url'. -AddTempSiteCollectionAdmin is only supported for Interactive auth. Resource: $url." -ErrorAction Continue
+                                        $success = $true
+                                        continue
+                                    }
+                                    Write-Verbose "Get-SPCPrivilegedUser: Access Denied on '$url'. Attempting to add temporary Site Collection Admin rights."
+                                    try {
+                                        $myUPN = if ($script:SPCContext.OperatorUPN -and $script:SPCContext.OperatorUPN -notlike 'AppOnly:*') {
+                                            $script:SPCContext.OperatorUPN
+                                        } else {
+                                            try {
+                                                (Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($script:SPCContext.GraphAccessToken)" } -ErrorAction Stop).userPrincipalName
+                                            } catch {
+                                                "admin@$($script:SPCContext.TenantName).onmicrosoft.com"
+                                            }
+                                        }
+
+                                        if (-not $myUPN) {
+                                            throw "Unable to determine current operator UPN for temporary SCA assignment."
+                                        }
+
+                                        Set-PnPTenantSite -Connection $script:SPCContext.PnPContext -Url $url -Owners $myUPN -ErrorAction Stop
+                                        $removeSca = $true
+                                        Start-Sleep -Seconds 5
+
+                                        $siteConnection = Connect-SPCSiteInternal -SiteUrl $url -Context $script:SPCContext
+                                        # Retry the scan in next while iteration
+                                    } catch {
+                                        Write-Error "[ERR-GPU-005] $(Get-Date -Format 'o'): Failed to add temporary SCA or retry on '$url'. Resource: $url. Details: $_" -ErrorAction Continue
+                                        $success = $true
+                                    }
+                                } else {
+                                    Write-Error "[ERR-GPU-002] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($ex.Message)" -ErrorAction Continue
+                                    $success = $true
                                 }
                             }
                             else {
@@ -171,8 +192,11 @@ function Get-SPCPrivilegedUser {
                         }
                     }
                 }
-                catch {
-                    Write-Error "[ERR-GPU-003] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($_.Exception.Message)" -ErrorAction Continue
+                finally {
+                    if ($removeSca -and $myUPN) {
+                        Write-Verbose "Get-SPCPrivilegedUser: Removing temporary Site Collection Admin rights for $myUPN on $url"
+                        Remove-PnPSiteCollectionAdmin -Connection $siteConnection -Owners $myUPN -ErrorAction SilentlyContinue
+                    }
                 }
             }
 

@@ -87,5 +87,38 @@ Describe 'Get-SPCBrokenInheritance Unit Tests' -Tag 'Scan', 'Permissions', 'Gove
             { Get-SPCBrokenInheritance -SiteUrl 'https://contoso.sharepoint.com/sites/Finance' } |
                 Should -Throw -ExpectedMessage '*ERR-001*'
         }
+
+        It 'AC-SCA-01 Should temporarily elevate SCA on Access Denied when -AddTempSiteCollectionAdmin is supplied' {
+            Mock Test-SPCConnection { $true }
+            $script:accessDenied = $true
+            Mock Connect-SPCSiteInternal {
+                return [PSCustomObject]@{ Url = 'https://contoso.sharepoint.com/sites/Finance' }
+            }
+            Mock Get-PnPList {
+                if ($script:accessDenied) {
+                    throw "403 Unauthorized: Access Denied"
+                }
+                return @(
+                    [PSCustomObject]@{
+                        Title                    = 'Restricted Docs'
+                        BaseType                 = 'DocumentLibrary'
+                        HasUniqueRoleAssignments = $true
+                        Hidden                   = $false
+                        RootFolder               = [PSCustomObject]@{ ServerRelativeUrl = '/sites/Finance/Restricted' }
+                    }
+                )
+            }
+            Mock Get-PnPListItem { @() }
+            Mock Set-PnPTenantSite {
+                $script:accessDenied = $false
+            }
+            Mock Remove-PnPSiteCollectionAdmin {}
+            Mock Start-Sleep {}
+
+            $result = Get-SPCBrokenInheritance -SiteUrl 'https://contoso.sharepoint.com/sites/Finance' -AddTempSiteCollectionAdmin
+            $result.UniqueScopes | Should -Be 1
+            Should -Invoke -CommandName Set-PnPTenantSite -Times 1 -Exactly
+            Should -Invoke -CommandName Remove-PnPSiteCollectionAdmin -Times 1 -Exactly
+        }
     }
 }

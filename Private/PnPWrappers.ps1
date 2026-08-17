@@ -184,10 +184,69 @@ function Get-PnPGroup {
     [CmdletBinding()]
     param(
         [Parameter()] [object]$Connection,
-        [Parameter()] [object]$Identity
+        [Parameter()] [object]$Identity,
+        [Parameter()] [switch]$AssociatedOwnerGroup,
+        [Parameter()] [switch]$AssociatedMemberGroup,
+        [Parameter()] [switch]$AssociatedVisitorGroup,
+        [Parameter()] [string[]]$Includes
     )
     if (Get-Command -Name 'Get-PnPGroup' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
         & (Get-Command -Name 'Get-PnPGroup' -Module PnP.PowerShell) @PSBoundParameters
+    }
+}
+
+function Get-PnPGroupMember {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false, Position=0)] [object]$Group,
+        [Parameter()] [object]$Identity,
+        [Parameter()] [object]$Connection
+    )
+    if (Get-Command -Name 'Get-PnPGroupMember' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        $p = @{}
+        if ($PSBoundParameters.ContainsKey('Connection')) { $p['Connection'] = $Connection }
+        $targetGroup = if ($Group) { $Group } elseif ($Identity) { $Identity } else { $null }
+        if ($targetGroup) {
+            $groupKey = if ($targetGroup -is [string] -or $targetGroup -is [int]) { $targetGroup } else { [string]$targetGroup.Title }
+            $p['Group'] = $groupKey
+        }
+        & (Get-Command -Name 'Get-PnPGroupMember' -Module PnP.PowerShell) @p
+    }
+}
+
+function Set-PnPTenantSite {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [object]$Connection,
+        [Parameter()] [string]$Url,
+        [Parameter()] [string[]]$Owners
+    )
+    if (Get-Command -Name 'Set-PnPTenantSite' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Set-PnPTenantSite' -Module PnP.PowerShell) @PSBoundParameters
+    }
+}
+
+function Remove-PnPSiteCollectionAdmin {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [object]$Connection,
+        [Parameter()] [string[]]$Owners
+    )
+    if (Get-Command -Name 'Remove-PnPSiteCollectionAdmin' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Remove-PnPSiteCollectionAdmin' -Module PnP.PowerShell) @PSBoundParameters
+    }
+}
+
+function Invoke-PnPSPRestMethod {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [string]$Method = 'Get',
+        [Parameter()] [string]$Url,
+        [Parameter()] [object]$Content,
+        [Parameter()] [object]$Connection
+    )
+    if (Get-Command -Name 'Invoke-PnPSPRestMethod' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Invoke-PnPSPRestMethod' -Module PnP.PowerShell) @PSBoundParameters
     }
 }
 
@@ -209,5 +268,34 @@ function Get-PnPSiteUser {
     )
     if (Get-Command -Name 'Get-PnPSiteUser' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
         & (Get-Command -Name 'Get-PnPSiteUser' -Module PnP.PowerShell) @PSBoundParameters
+    } else {
+        Get-PnPUser -Connection $Connection
+    }
+}
+
+function Get-PnPSiteGroup {
+    [CmdletBinding()]
+    param([Parameter()] [object]$Connection)
+    if (Get-Command -Name 'Get-PnPSiteGroup' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        & (Get-Command -Name 'Get-PnPSiteGroup' -Module PnP.PowerShell) @PSBoundParameters
+    }
+}
+
+function Get-PnPUser {
+    [CmdletBinding()]
+    param(
+        [Parameter()] [object]$Connection,
+        [Parameter()] [switch]$WithRightsAssigned,
+        [Parameter()] [string]$LoginName,
+        [Parameter()] [string[]]$Includes
+    )
+    if (Get-Command -Name 'Get-PnPUser' -Module PnP.PowerShell -ErrorAction SilentlyContinue) {
+        $params = @{}
+        foreach ($k in $PSBoundParameters.Keys) { $params[$k] = $PSBoundParameters[$k] }
+        if ($params.ContainsKey('LoginName')) {
+            $params['Identity'] = $params['LoginName']
+            $params.Remove('LoginName') | Out-Null
+        }
+        & (Get-Command -Name 'Get-PnPUser' -Module PnP.PowerShell) @params
     }
 }

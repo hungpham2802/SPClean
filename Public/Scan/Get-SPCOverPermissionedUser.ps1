@@ -20,50 +20,18 @@ function Get-SPCOverPermissionedUser {
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param (
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $false, Position = 0, ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$SiteUrl
+        [string]$SiteUrl,
+
+        [Parameter()]
+        [switch]$AddTempSiteCollectionAdmin
     )
 
     begin {
         Write-Verbose "Validating connection..."
         if (Get-Command Test-SPCConnection -ErrorAction SilentlyContinue) {
             Test-SPCConnection
-        }
-        $connectToSite = {
-            param([string] $SiteUrl, [PSCustomObject] $Ctx)
-            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
-            switch ($Ctx.AuthMethod) {
-                'Interactive' {
-                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
-                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
-                }
-                'AppOnly' {
-                    if ($Ctx._CertificatePath) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -CertificatePath $Ctx._CertificatePath `
-                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    }
-                    elseif ($Ctx._CertificateThumbprint) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    }
-                    else {
-                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
-                        try {
-                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                            Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                                -ClientSecret $plain -ReturnConnection
-                        }
-                        finally {
-                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-                            $plain = $null
-                        }
-                    }
-                }
-            }
         }
         $tempResults = [System.Collections.Generic.List[PSCustomObject]]::new()
     }
@@ -87,6 +55,10 @@ function Get-SPCOverPermissionedUser {
                 Write-Progress -Activity "Scanning Sites for Over-Permissioned Users" -Status "Processing site $url ($counter / $totalSites)" -PercentComplete (($counter / $totalSites) * 100)
                 Write-Verbose "Scanning site: $url"
 
+                $removeSca = $false
+                $myUPN = $null
+                $siteConnection = $null
+
                 try {
                     $retryCount = 0
                     $maxRetries = 5
@@ -94,30 +66,32 @@ function Get-SPCOverPermissionedUser {
                     
                     while (-not $success -and $retryCount -lt $maxRetries) {
                         try {
-                            $siteConnection = & $connectToSite -SiteUrl $url -Ctx $script:SPCContext
+                            $siteConnection = Connect-SPCSiteInternal -SiteUrl $url -Context $script:SPCContext
                             
-                            $roleAssignments = (Invoke-PnPSPRestMethod -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -Connection $siteConnection -ErrorAction SilentlyContinue).value
-                            foreach ($ra in $roleAssignments) {
-                                if ($ra.Member.PrincipalType -in 'User', 1 -and $ra.Member.LoginName -match "\|membership\|") {
-                                    $upn = $ra.Member.LoginName.Split("|")[-1]
-                                    
-                                    $roles = $ra.RoleDefinitionBindings.Name
-                                    $accessLevel = "None"
-                                    if ($roles -contains "Full Control") {
-                                        $accessLevel = "Full Control"
-                                    }
-                                    elseif ($roles -contains "Edit" -or $roles -contains "Contribute") {
-                                        $accessLevel = "Edit"
-                                    }
-                                    elseif ($roles -contains "Read" -or $roles -contains "View Only") {
-                                        $accessLevel = "Read"
-                                    }
-                                    
-                                    if ($accessLevel -ne "None") {
-                                        $tempResults.Add([PSCustomObject]@{
-                                                UPN         = $upn
-                                                AccessLevel = $accessLevel
-                                            })
+                            $roleAssignments = (Invoke-PnPSPRestMethod -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -Connection $siteConnection -ErrorAction Stop).value
+                            if ($roleAssignments) {
+                                foreach ($ra in $roleAssignments) {
+                                    if ($ra.Member.PrincipalType -in 'User', 1 -and $ra.Member.LoginName -match "\|membership\|") {
+                                        $upn = $ra.Member.LoginName.Split("|")[-1]
+                                        
+                                        $roles = $ra.RoleDefinitionBindings.Name
+                                        $accessLevel = "None"
+                                        if ($roles -contains "Full Control") {
+                                            $accessLevel = "Full Control"
+                                        }
+                                        elseif ($roles -contains "Edit" -or $roles -contains "Contribute") {
+                                            $accessLevel = "Edit"
+                                        }
+                                        elseif ($roles -contains "Read" -or $roles -contains "View Only") {
+                                            $accessLevel = "Read"
+                                        }
+                                        
+                                        if ($accessLevel -ne "None") {
+                                            $tempResults.Add([PSCustomObject]@{
+                                                    UPN         = $upn
+                                                    AccessLevel = $accessLevel
+                                                })
+                                        }
                                     }
                                 }
                             }
@@ -132,17 +106,51 @@ function Get-SPCOverPermissionedUser {
                                     $retryAfter = $ex.Response.Headers["Retry-After"]
                                 }
                                 
-                                if ($retryAfter) {
-                                    $waitTime = [int]$retryAfter
-                                }
-                                else {
-                                    $waitTime = [Math]::Pow(2, $retryCount)
-                                }
+                                $waitTime = if ($retryAfter) { [int]$retryAfter } else { [Math]::Pow(2, $retryCount) }
                                 
                                 Write-Verbose "Throttled (429/503). Retrying in $waitTime seconds (Attempt $retryCount of $maxRetries)..."
                                 Start-Sleep -Seconds $waitTime
                                 if ($retryCount -eq $maxRetries) {
                                     Write-Error "[ERR-GOPU-001] $(Get-Date -Format 'o'): Failed to process site collection '$url' after $maxRetries attempts due to throttling. Resource: $url." -ErrorAction Continue
+                                }
+                            }
+                            elseif ($ex.Message -match "401" -or $ex.Message -match "403" -or $ex.Message -match "Access denied" -or $ex.Message -match "Unauthorized") {
+                                if ($AddTempSiteCollectionAdmin) {
+                                    $authMethod = if ($script:SPCContext.AuthMethod) { $script:SPCContext.AuthMethod } else { $script:SPCContext.AuthMode }
+                                    if ($authMethod -ne 'Interactive') {
+                                        Write-Error "[ERR-GOPU-004] $(Get-Date -Format 'o'): Access Denied on '$url'. -AddTempSiteCollectionAdmin is only supported for Interactive auth. Resource: $url." -ErrorAction Continue
+                                        $success = $true
+                                        continue
+                                    }
+                                    Write-Verbose "Get-SPCOverPermissionedUser: Access Denied on '$url'. Attempting to add temporary Site Collection Admin rights."
+                                    try {
+                                        $myUPN = if ($script:SPCContext.OperatorUPN -and $script:SPCContext.OperatorUPN -notlike 'AppOnly:*') {
+                                            $script:SPCContext.OperatorUPN
+                                        } else {
+                                            try {
+                                                (Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($script:SPCContext.GraphAccessToken)" } -ErrorAction Stop).userPrincipalName
+                                            } catch {
+                                                "admin@$($script:SPCContext.TenantName).onmicrosoft.com"
+                                            }
+                                        }
+
+                                        if (-not $myUPN) {
+                                            throw "Unable to determine current operator UPN for temporary SCA assignment."
+                                        }
+
+                                        Set-PnPTenantSite -Connection $script:SPCContext.PnPContext -Url $url -Owners $myUPN -ErrorAction Stop
+                                        $removeSca = $true
+                                        Start-Sleep -Seconds 5
+
+                                        $siteConnection = Connect-SPCSiteInternal -SiteUrl $url -Context $script:SPCContext
+                                        # Retry query in next iteration
+                                    } catch {
+                                        Write-Error "[ERR-GOPU-005] $(Get-Date -Format 'o'): Failed to add temporary SCA or retry on '$url'. Resource: $url. Details: $_" -ErrorAction Continue
+                                        $success = $true
+                                    }
+                                } else {
+                                    Write-Error "[ERR-GOPU-002] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($ex.Message)" -ErrorAction Continue
+                                    $success = $true
                                 }
                             }
                             else {
@@ -152,8 +160,11 @@ function Get-SPCOverPermissionedUser {
                         }
                     }
                 }
-                catch {
-                    Write-Error "[ERR-GOPU-003] $(Get-Date -Format 'o'): Error processing site collection '$url'. Resource: $url. Details: $($_.Exception.Message)" -ErrorAction Continue
+                finally {
+                    if ($removeSca -and $myUPN) {
+                        Write-Verbose "Get-SPCOverPermissionedUser: Removing temporary Site Collection Admin rights for $myUPN on $url"
+                        Remove-PnPSiteCollectionAdmin -Connection $siteConnection -Owners $myUPN -ErrorAction SilentlyContinue
+                    }
                 }
             }
 

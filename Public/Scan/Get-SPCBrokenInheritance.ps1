@@ -17,9 +17,12 @@ function Get-SPCBrokenInheritance {
     [CmdletBinding()]
     [OutputType([PSCustomObject])]
     param (
-        [Parameter(Mandatory=$true)]
+        [Parameter(Mandatory=$true, Position=0, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
         [ValidateNotNullOrEmpty()]
-        [string]$SiteUrl
+        [string]$SiteUrl,
+
+        [Parameter()]
+        [switch]$AddTempSiteCollectionAdmin
     )
 
     begin {
@@ -34,7 +37,7 @@ function Get-SPCBrokenInheritance {
     process {
         Write-Verbose "Scanning Site: $SiteUrl for broken inheritance"
         
-        $brokenItems = @(Get-SPCLibraryBrokenInheritanceInternal -SiteUrl $SiteUrl)
+        $brokenItems = @(Get-SPCLibraryBrokenInheritanceInternal -SiteUrl $SiteUrl -AddTempSiteCollectionAdmin:$AddTempSiteCollectionAdmin)
         $uniqueScopesCount = $brokenItems.Count
 
         if ($uniqueScopesCount -gt 3000) {

@@ -2,20 +2,19 @@
 
 Describe 'Get-SPCOverPermissionedUser' {
     BeforeAll {
-        $script:sut = "$PSScriptRoot\..\..\Public\Scan\Get-SPCOverPermissionedUser.ps1"
-        . $PSScriptRoot\..\..\Public\Scan\Get-SPCOverPermissionedUser.ps1
-        function Test-SPCConnection {}
-        function Get-PnPTenantSite {}
-        function Connect-PnPOnline {}
-        function Invoke-PnPSPRestMethod {}
-        function Start-Sleep {}
+        . (Join-Path $PSScriptRoot '../../Private/PnPWrappers.ps1')
+        . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
+        . (Join-Path $PSScriptRoot '../../Private/Connect-SPCSiteInternal.ps1')
+        . (Join-Path $PSScriptRoot '../../Public/Scan/Get-SPCOverPermissionedUser.ps1')
+        $script:sut = (Join-Path $PSScriptRoot '../../Public/Scan/Get-SPCOverPermissionedUser.ps1')
     }
 
     BeforeEach {
         $script:SPCContext = [PSCustomObject]@{
-            TenantName = 'tenant'
-            AuthMethod = 'Interactive'
-            PnPContext = $null
+            TenantName       = 'tenant'
+            AuthMethod       = 'Interactive'
+            GraphAccessToken = 'mock_token'
+            PnPContext       = [PSCustomObject]@{ Url = 'https://tenant-admin.sharepoint.com' }
         }
     }
 
@@ -133,6 +132,38 @@ Describe 'Get-SPCOverPermissionedUser' {
 
             $result = Get-SPCOverPermissionedUser
             $global:retryCount | Should -Be 3
+        }
+
+        It 'AC-SCA-01 Should temporarily elevate SCA on Access Denied when -AddTempSiteCollectionAdmin is supplied' {
+            Mock Get-PnPTenantSite { return @([PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/restrictedSite" }) }
+            $script:accessDenied = $true
+            Mock Connect-SPCSiteInternal {
+                return [PSCustomObject]@{ Url = "https://tenant.sharepoint.com/sites/restrictedSite" }
+            }
+            Mock Invoke-PnPSPRestMethod {
+                if ($script:accessDenied) {
+                    throw "403 Unauthorized: Access Denied"
+                }
+                return [PSCustomObject]@{
+                    value = @(
+                        [PSCustomObject]@{
+                            Member                 = [PSCustomObject]@{ PrincipalType = 'User'; LoginName = "i:0#.f|membership|elevateduser@domain.com" }
+                            RoleDefinitionBindings = @([PSCustomObject]@{ Name = 'Full Control' })
+                        }
+                    )
+                }
+            }
+            Mock Set-PnPTenantSite {
+                $script:accessDenied = $false
+            }
+            Mock Remove-PnPSiteCollectionAdmin {}
+            Mock Start-Sleep {}
+
+            $result = Get-SPCOverPermissionedUser -AddTempSiteCollectionAdmin
+            $result.Count | Should -Be 1
+            $result[0].UPN | Should -Be "elevateduser@domain.com"
+            Should -Invoke -CommandName Set-PnPTenantSite -Times 1 -Exactly
+            Should -Invoke -CommandName Remove-PnPSiteCollectionAdmin -Times 1 -Exactly
         }
     }
 
