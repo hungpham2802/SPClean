@@ -42,7 +42,7 @@ function Invoke-SPCPermissionAnalytics {
         $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled @scanParams)
         $OrphanedUserCount = $orphans.Count
 
-        $guests = @(Get-SPCGuestAccess -ErrorAction SilentlyContinue)
+        $guests = @(Get-SPCGuestAccess @scanParams -ErrorAction SilentlyContinue)
         $HighRiskGuestCount = @($guests | Where-Object { $_.RiskLevel -eq 'HIGH' }).Count
 
         $overPermissioned = @(Get-SPCOverPermissionedUser @scanParams -ErrorAction SilentlyContinue)

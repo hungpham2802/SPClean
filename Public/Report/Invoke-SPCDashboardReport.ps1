@@ -37,7 +37,7 @@ function Invoke-SPCDashboardReport {
         $orphans = @(Get-SPCOrphanedUser -AllSites -IncludeGuests -IncludeDisabled @scanParams)
 
         Write-Verbose "Running Get-SPCGuestAccess scan..."
-        $guests = @(Get-SPCGuestAccess -ErrorAction SilentlyContinue)
+        $guests = @(Get-SPCGuestAccess @scanParams -ErrorAction SilentlyContinue)
 
         Write-Verbose "Running Get-SPCPrivilegedUser scan..."
         $privileged = @(Get-SPCPrivilegedUser @scanParams -ErrorAction SilentlyContinue)

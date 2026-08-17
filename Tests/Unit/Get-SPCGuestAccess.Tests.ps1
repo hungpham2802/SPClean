@@ -1,6 +1,9 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 BeforeAll {
-        $script:sut = "$PSScriptRoot\..\..\Public\Scan\Get-SPCGuestAccess.ps1"
+    $script:sut = "$PSScriptRoot\..\..\Public\Scan\Get-SPCGuestAccess.ps1"
+    . $PSScriptRoot\..\..\Private\PnPWrappers.ps1
+    . $PSScriptRoot\..\..\Private\Connect-SPCSiteInternal.ps1
+    . $PSScriptRoot\..\..\Private\Invoke-SPCTempElevationInternal.ps1
     . $PSScriptRoot\..\..\Public\Scan\Get-SPCGuestAccess.ps1
     function Test-SPCConnection {}
     function Connect-PnPOnline {}
@@ -327,6 +330,34 @@ Describe "Get-SPCGuestAccess" {
             $result = Get-SPCGuestAccess -SiteUrl "https://test" 2>$null
             
             Assert-MockCalled Invoke-SPCGraphBatch -Times 1
+        }
+
+        It "AC-SCA-01 Should temporarily elevate SCA on Access Denied when -AddTempSiteCollectionAdmin is supplied" {
+            Mock Test-SPCConnection {}
+            Mock Get-PnPAccessToken { return "MockToken" }
+            Mock Connect-PnPOnline {}
+            Mock Invoke-PnPSPRestMethod { return [PSCustomObject]@{ value = @() } }
+            Mock Get-PnPGroup { return @() }
+            Mock Invoke-SPCGraphBatch { return @() }
+            Mock Invoke-SPCTempElevationInternal { return [PSCustomObject]@{ Success = $true; Strategy = "Test"; ErrorMessage = $null } }
+            Mock Undo-SPCTempElevationInternal {}
+
+            $script:callCount = 0
+            Mock Get-PnPUser {
+                $script:callCount++
+                if ($script:callCount -eq 1) {
+                    throw [System.UnauthorizedAccessException]::new("Attempted to perform an unauthorized operation.")
+                }
+                return @(
+                    [PSCustomObject]@{ Email = 'guest@ext.com'; LoginName = 'guest#EXT#'; PrincipalType = 'Guest'; IsSiteAdmin = $false }
+                )
+            }
+
+            $result = Get-SPCGuestAccess -SiteUrl "https://test" -AddTempSiteCollectionAdmin
+
+            $result.Count | Should -Be 1
+            Assert-MockCalled Invoke-SPCTempElevationInternal -Times 1
+            Assert-MockCalled Undo-SPCTempElevationInternal -Times 1
         }
     }
 

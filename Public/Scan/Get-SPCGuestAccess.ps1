@@ -18,7 +18,10 @@ function Get-SPCGuestAccess {
 
         [Parameter(Mandatory=$false)]
         [ValidateRange(0, 3650)]
-        [int]$DaysInactive = 90
+        [int]$DaysInactive = 90,
+
+        [Parameter(Mandatory=$false)]
+        [switch]$AddTempSiteCollectionAdmin
     )
 
     begin {
@@ -27,39 +30,6 @@ function Get-SPCGuestAccess {
         }
         
         Test-SPCConnection
-
-        $connectToSite = {
-            param([string] $SiteUrl, [PSCustomObject] $Ctx)
-            $tenantId = if ($Ctx.TenantName -match '\.') { $Ctx.TenantName } else { "$($Ctx.TenantName).onmicrosoft.com" }
-            switch ($Ctx.AuthMethod) {
-                'Interactive' {
-                    $token = Get-PnPAccessToken -ResourceTypeName SharePoint -Connection $Ctx.PnPContext
-                    Connect-PnPOnline -Url $SiteUrl -AccessToken $token -ReturnConnection
-                }
-                'AppOnly' {
-                    if ($Ctx._CertificatePath) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -CertificatePath $Ctx._CertificatePath `
-                            -CertificatePassword $Ctx._CertificatePassword -ReturnConnection
-                    } elseif ($Ctx._CertificateThumbprint) {
-                        Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                            -Tenant $tenantId `
-                            -Thumbprint $Ctx._CertificateThumbprint -ReturnConnection
-                    } else {
-                        $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($Ctx._ClientSecret)
-                        try {
-                            $plain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
-                            Connect-PnPOnline -Url $SiteUrl -ClientId $Ctx._ClientId `
-                                -ClientSecret $plain -ReturnConnection
-                        } finally {
-                            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
-                            $plain = $null
-                        }
-                    }
-                }
-            }
-        }
 
         $highCount = 0
         $mediumCount = 0
@@ -84,25 +54,72 @@ function Get-SPCGuestAccess {
                 $siteIndex++
                 Write-Progress -Activity "Scanning Sites" -Status "Processing site $siteIndex of $totalSites" -PercentComplete (($siteIndex / $totalSites) * 100)
                 
-                try {
-                    Write-Verbose "Connecting to $site"
-                    $siteConnection = & $connectToSite -SiteUrl $site -Ctx $script:SPCContext
-                    
-                    Write-Verbose "Retrieving users for $site"
-                    $users = Get-PnPUser -Connection $siteConnection -ErrorAction Stop | Where-Object {
-                        $_.PrincipalType -eq 'Guest' -or $_.LoginName -match '#EXT#'
-                    }
+                $elevationRecord = $null
+                $users = @()
+                $roleAssignments = @()
+                $allGroups = @()
 
-                    if ($users.Count -gt 0) {
-                        $roleAssignments = (Invoke-PnPSPRestMethod -Connection $siteConnection -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -ErrorAction SilentlyContinue).value
-                        $allGroups = Get-PnPGroup -Connection $siteConnection -Includes Users -ErrorAction SilentlyContinue
+                try {
+                    $retrySite = $true
+                    $siteRetries = 0
+
+                    while ($retrySite -and $siteRetries -lt 2) {
+                        $siteRetries++
+                        try {
+                            Write-Verbose "Connecting to $site"
+                            $siteConnection = Connect-SPCSiteInternal -SiteUrl $site -Context $script:SPCContext
+                            
+                            Write-Verbose "Retrieving users for $site"
+                            $users = @(Get-PnPUser -Connection $siteConnection -ErrorAction Stop | Where-Object {
+                                $_.PrincipalType -eq 'Guest' -or $_.LoginName -match '#EXT#'
+                            })
+
+                            if ($users.Count -gt 0) {
+                                $roleAssignments = (Invoke-PnPSPRestMethod -Connection $siteConnection -Method Get -Url "/_api/web/roleassignments?`$expand=Member,RoleDefinitionBindings" -ErrorAction SilentlyContinue).value
+                                $allGroups = Get-PnPGroup -Connection $siteConnection -Includes Users -ErrorAction SilentlyContinue
+                            }
+                            $retrySite = $false
+                        }
+                        catch {
+                            $ex = $_.Exception
+                            if ($ex.Message -match "401" -or $ex.Message -match "403" -or $ex.Message -match "Access denied" -or $ex.Message -match "Unauthorized" -or $ex.Message -match "E_ACCESSDENIED") {
+                                if ($AddTempSiteCollectionAdmin -and $null -eq $elevationRecord) {
+                                    $authMethod = if ($script:SPCContext.AuthMethod) { $script:SPCContext.AuthMethod } else { $script:SPCContext.AuthMode }
+                                    if ($authMethod -ne 'Interactive') {
+                                        Write-Error "[ERR-GUA-004] $(Get-Date -Format 'o'): Access Denied on '$site'. -AddTempSiteCollectionAdmin is only supported for Interactive auth. Resource: $site." -ErrorAction Continue
+                                        $retrySite = $false
+                                        break
+                                    }
+                                    Write-Verbose "Get-SPCGuestAccess: Access Denied on '$site'. Attempting temporary elevation."
+                                    $elevationRecord = Invoke-SPCTempElevationInternal -SiteUrl $site -Context $script:SPCContext
+                                    if ($elevationRecord.Success) {
+                                        continue
+                                    } else {
+                                        Write-Warning "[WARN-GUA-005] $(Get-Date -Format 'o'): Access Denied on site collection '$site'. Skipping restricted site. Details: $($elevationRecord.ErrorMessage)"
+                                        $retrySite = $false
+                                        break
+                                    }
+                                } else {
+                                    $errCode = "ERR-GUA-003"
+                                    $timestamp = (Get-Date -Format 'o')
+                                    Write-Error "[$errCode] ${timestamp}: Failed to process site collection '$site'. Resource: $site. Details: $($_.Exception.Message)" -ErrorAction Continue
+                                    $retrySite = $false
+                                    break
+                                }
+                            } else {
+                                $errCode = "ERR-GUA-003"
+                                $timestamp = (Get-Date -Format 'o')
+                                Write-Error "[$errCode] ${timestamp}: Failed to process site collection '$site'. Resource: $site. Details: $($_.Exception.Message)" -ErrorAction Continue
+                                $retrySite = $false
+                                break
+                            }
+                        }
                     }
                 }
-                catch {
-                    $errCode = "ERR-GUA-003"
-                    $timestamp = (Get-Date -Format 'o')
-                    Write-Error "[$errCode] ${timestamp}: Failed to process site collection '$site'. Resource: $site. Details: $($_.Exception.Message)" -ErrorAction Continue
-                    continue
+                finally {
+                    if ($elevationRecord -and $elevationRecord.Success) {
+                        Undo-SPCTempElevationInternal -ElevationRecord $elevationRecord -Context $script:SPCContext
+                    }
                 }
 
                 foreach ($user in $users) {
