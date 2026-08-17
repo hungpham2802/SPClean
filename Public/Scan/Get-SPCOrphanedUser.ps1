@@ -170,14 +170,18 @@ function Get-SPCOrphanedUser {
         foreach ($currentSiteUrl in $pendingSites) {
             $siteIdx++
 
-            # Refresh Graph token if older than 50 minutes to avoid expiration during long scans
+            # Refresh Graph token if older than 30 minutes to avoid expiration during long scans
             $lastTokenTime = if ($ctx.GraphTokenRefreshedAt) { $ctx.GraphTokenRefreshedAt } else { $ctx.ConnectedAt }
             $timeSinceRefresh = (Get-Date).ToUniversalTime() - $lastTokenTime
-            if ($timeSinceRefresh.TotalMinutes -gt 50) {
-                Write-Verbose "Get-SPCOrphanedUser: Graph token is older than 50 minutes. Refreshing..."
-                $graphToken = Get-PnPGraphAccessToken -Connection $ctx.PnPContext
-                $ctx.GraphAccessToken = $graphToken
-                $ctx.GraphTokenRefreshedAt = (Get-Date).ToUniversalTime()
+            if ($timeSinceRefresh.TotalMinutes -gt 30) {
+                Write-Verbose "Get-SPCOrphanedUser: Graph token is older than 30 minutes. Refreshing..."
+                try {
+                    $graphToken = Get-PnPGraphAccessToken -Connection $ctx.PnPContext
+                    $ctx.GraphAccessToken = $graphToken
+                    $ctx.GraphTokenRefreshedAt = (Get-Date).ToUniversalTime()
+                } catch {
+                    Write-Verbose "Get-SPCOrphanedUser: Proactive token refresh failed: $_"
+                }
             }
             if ($showProgress) {
                 Write-Progress -Activity 'Get-SPCOrphanedUser' `

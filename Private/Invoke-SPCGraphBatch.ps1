@@ -1,4 +1,4 @@
-﻿function Invoke-SPCGraphBatch {
+function Invoke-SPCGraphBatch {
     <#
     .SYNOPSIS
         Sends Microsoft Graph JSON batch requests per SRS 5.1 (max 20/batch, 429 retry).
@@ -54,7 +54,7 @@
             while ($currentRequests.Count -gt 0 -and $subAttempt -lt $maxAttempts) {
                 $body = @{ requests = @($currentRequests) } | ConvertTo-Json -Depth 5
 
-                # Envelope HTTP retry loop (for outer 429 envelope throttling)
+                # Envelope HTTP retry loop (for outer 429 envelope throttling and 401 token refresh)
                 $envelopeAttempt = 0
                 $result = $null
 
@@ -72,6 +72,36 @@
                             $statusCode = [int]$_.Exception.ResponseStatusCode
                         } elseif (-not $useMgGraph -and $_.Exception.Response) {
                             $statusCode = [int]$_.Exception.Response.StatusCode
+                        }
+
+                        $isExpiredToken = ($statusCode -eq 401) -or 
+                                          ($_.Exception.Message -match 'Lifetime validation failed|token is expired|InvalidAuthenticationToken|401|Unauthorized')
+
+                        if ($isExpiredToken -and $script:SPCContext) {
+                            Write-Verbose "Invoke-SPCGraphBatch: Access token expired or invalid (401). Refreshing token..."
+                            $freshToken = $null
+                            try {
+                                if ($script:SPCContext.PnPContext) {
+                                    $freshToken = Get-PnPAccessToken -Connection $script:SPCContext.PnPContext -ErrorAction Stop
+                                } else {
+                                    $freshToken = Get-PnPAccessToken -ErrorAction Stop
+                                }
+                            } catch {
+                                Write-Verbose "Invoke-SPCGraphBatch: Token refresh attempt failed: $($_.Exception.Message)"
+                            }
+
+                            if (-not [string]::IsNullOrWhiteSpace($freshToken)) {
+                                $AccessToken = $freshToken
+                                $headers['Authorization'] = "Bearer $freshToken"
+                                $script:SPCContext.GraphAccessToken = $freshToken
+                                if ($null -ne $script:SPCContext.PSObject.Properties['GraphTokenRefreshedAt']) {
+                                    $script:SPCContext.GraphTokenRefreshedAt = (Get-Date).ToUniversalTime()
+                                } else {
+                                    $script:SPCContext | Add-Member -MemberType NoteProperty -Name 'GraphTokenRefreshedAt' -Value ((Get-Date).ToUniversalTime()) -Force
+                                }
+                                Write-Verbose "Invoke-SPCGraphBatch: Successfully refreshed Graph token. Retrying request..."
+                                continue
+                            }
                         }
 
                         if ($statusCode -eq 429) {

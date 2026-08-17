@@ -2,6 +2,7 @@
 
 BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/Invoke-SPCGraphBatch.ps1')
+    function Get-PnPAccessToken {}
 }
 
 Describe 'Invoke-SPCGraphBatch Unit Tests' {
@@ -74,6 +75,37 @@ Describe 'Invoke-SPCGraphBatch Unit Tests' {
             $requests.Add(@{ id = '1'; method = 'GET'; url = '/users/1' })
 
             { Invoke-SPCGraphBatch -Requests $requests -AccessToken 'fake-token' } | Should -Throw -ExpectedMessage "*ERR-429*"
+        }
+
+        It 'refreshes token and retries on 401 Unauthorized' {
+            $script:SPCContext = [PSCustomObject]@{
+                GraphAccessToken = 'old_token'
+                PnPContext = [PSCustomObject]@{ Url = 'https://contoso.sharepoint.com' }
+            }
+            Mock Get-PnPAccessToken { return 'refreshed_token' }
+
+            $script:attempt401 = 0
+            Mock Invoke-RestMethod {
+                $script:attempt401++
+                if ($script:attempt401 -eq 1) {
+                    $ex = [System.Management.Automation.MethodInvocationException]::new("401 Unauthorized")
+                    $fakeResponse = [PSCustomObject]@{ StatusCode = 401 }
+                    $ex | Add-Member -MemberType NoteProperty -Name 'Response' -Value $fakeResponse -Force
+                    throw $ex
+                }
+                return [PSCustomObject]@{
+                    responses = @([PSCustomObject]@{ id = '1'; status = 200; body = 'OK' })
+                }
+            }
+
+            $requests = [System.Collections.Generic.List[hashtable]]::new()
+            $requests.Add(@{ id = '1'; method = 'GET'; url = '/users/1' })
+
+            $res = Invoke-SPCGraphBatch -Requests $requests -AccessToken 'old_token'
+            $res.Count | Should -Be 1
+            $res[0].status | Should -Be 200
+            $script:attempt401 | Should -Be 2
+            $script:SPCContext.GraphAccessToken | Should -Be 'refreshed_token'
         }
     }
 
