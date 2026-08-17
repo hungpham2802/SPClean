@@ -203,7 +203,7 @@ function Get-SPCOrphanedUser {
                     Write-Verbose "Get-SPCOrphanedUser: Getting UIL for $currentSiteUrl"
                     $uilUsers  = Get-PnPSiteUser -Connection $siteConn -ErrorAction Stop
                 } catch [System.UnauthorizedAccessException], [System.Exception] {
-                    if ($_.Exception.Message -match "401" -or $_.Exception.Message -match "403" -or $_.Exception.Message -match "Access denied" -or $_.Exception.Message -match "Unauthorized") {
+                    if ($_.Exception.Message -match "401|403|Access.*denied|Unauthorized|E_ACCESSDENIED|forbidden" -or $_.FullyQualifiedErrorId -match "401|403|Unauthorized|Access.*Denied") {
                         if ($AddTempSiteCollectionAdmin) {
                             $authMethod = if ($ctx.AuthMethod) { $ctx.AuthMethod } else { $ctx.AuthMode }
                             if ($authMethod -ne 'Interactive') {

@@ -203,6 +203,35 @@ Describe 'Get-SPCOrphanedUser' {
                 -ThrottleLimit 99 -WarningVariable wv | Out-Null
             $wv | Should -Match 'clamped to 10'
         }
+
+        It 'AC-SCA-01: Temporarily elevates SCA when Access is denied and -AddTempSiteCollectionAdmin is supplied' {
+            $script:SPCContext = $script:FakeContext
+            Mock Invoke-SPCTempElevationInternal { return [PSCustomObject]@{ Success = $true; Strategy = "Test"; ErrorMessage = $null } }
+            Mock Undo-SPCTempElevationInternal {}
+            Mock Get-PnPWeb { return [PSCustomObject]@{ Title = 'HR' } }
+            Mock Get-PnPUser { return @() }
+            Mock Invoke-SPCGraphBatch {
+                return @(
+                    [PSCustomObject]@{ id = '1'; status = 404; body = @{} }
+                )
+            }
+
+            $script:callCount = 0
+            Mock Get-PnPSiteUser {
+                $script:callCount++
+                if ($script:callCount -eq 1) {
+                    throw [System.UnauthorizedAccessException]::new("Access is denied. (Exception from HRESULT: 0x80070005 (E_ACCESSDENIED))")
+                }
+                return @(
+                    [PSCustomObject]@{ Id = 1; LoginName = 'i:0#.f|membership|alice@contoso.com'; Title = 'Alice'; Email = 'alice@contoso.com'; PrincipalType = 'User' }
+                )
+            }
+
+            $result = @(Get-SPCOrphanedUser -SiteUrl 'https://contoso.sharepoint.com/sites/HR' -AddTempSiteCollectionAdmin)
+            $result.Count | Should -Be 1
+            Assert-MockCalled Invoke-SPCTempElevationInternal -Times 1
+            Assert-MockCalled Undo-SPCTempElevationInternal -Times 1
+        }
     }
 
     Context 'AC-12: no credentials in output streams' {

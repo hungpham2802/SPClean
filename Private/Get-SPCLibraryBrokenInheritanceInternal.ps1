@@ -34,7 +34,7 @@ function Get-SPCLibraryBrokenInheritanceInternal {
                 }
                 catch {
                     $ex = $_.Exception
-                    if (($ex.Message -match "401" -or $ex.Message -match "403" -or $ex.Message -match "Access denied" -or $ex.Message -match "Unauthorized") -and -not $attemptedSca) {
+                    if (($ex.Message -match "401|403|Access.*denied|Unauthorized|E_ACCESSDENIED|forbidden" -or $_.FullyQualifiedErrorId -match "401|403|Unauthorized|Access.*Denied") -and -not $attemptedSca) {
                         $attemptedSca = $true
                         if ($AddTempSiteCollectionAdmin) {
                             $authMethod = if ($script:SPCContext.AuthMethod) { $script:SPCContext.AuthMethod } else { $script:SPCContext.AuthMode }

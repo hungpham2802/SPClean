@@ -146,7 +146,7 @@ function Get-SPCPrivilegedUser {
                                     Write-Error "[ERR-GPU-001] $(Get-Date -Format 'o'): Failed to process site collection '$url' after $maxRetries attempts due to throttling. Resource: $url." -ErrorAction Continue
                                 }
                             }
-                            elseif ($ex.Message -match "401" -or $ex.Message -match "403" -or $ex.Message -match "Access denied" -or $ex.Message -match "Unauthorized") {
+                            elseif ($ex.Message -match "401|403|Access.*denied|Unauthorized|E_ACCESSDENIED|forbidden" -or $_.FullyQualifiedErrorId -match "401|403|Unauthorized|Access.*Denied") {
                                 if ($AddTempSiteCollectionAdmin) {
                                     $authMethod = if ($script:SPCContext.AuthMethod) { $script:SPCContext.AuthMethod } else { $script:SPCContext.AuthMode }
                                     if ($authMethod -ne 'Interactive') {

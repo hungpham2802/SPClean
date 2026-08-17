@@ -111,7 +111,7 @@ function Restore-SPCOrphanedUser {
                 try {
                     Get-PnPWeb -Connection $siteConn -ErrorAction Stop | Out-Null
                 } catch [System.UnauthorizedAccessException], [System.Exception] {
-                    if ($_.Exception.Message -match "401" -or $_.Exception.Message -match "403" -or $_.Exception.Message -match "Access denied" -or $_.Exception.Message -match "Unauthorized") {
+                    if ($_.Exception.Message -match "401|403|Access.*denied|Unauthorized|E_ACCESSDENIED|forbidden" -or $_.FullyQualifiedErrorId -match "401|403|Unauthorized|Access.*Denied") {
                         if ($AddTempSiteCollectionAdmin) {
                             if ($ctx.AuthMethod -ne 'Interactive') {
                                 Write-Warning "Restore-SPCOrphanedUser: Access Denied on $siteUrl. -AddTempSiteCollectionAdmin is only supported for Interactive auth."
