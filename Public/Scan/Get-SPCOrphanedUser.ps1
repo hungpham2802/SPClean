@@ -128,8 +128,8 @@ function Get-SPCOrphanedUser {
             Write-Verbose 'Get-SPCOrphanedUser: Enumerating all tenant sites...'
             $tenantSites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext -ErrorAction Stop
             foreach ($site in $tenantSites) {
-                if ($site.Template -like 'REDIRECTSITE#*') {
-                    Write-Verbose "Get-SPCOrphanedUser: Skipping redirect site $($site.Url) ($($site.Template))"
+                if ($site.Template -like 'REDIRECTSITE#*' -or $site.Template -like 'POINTPUBLISHINGHUB#*') {
+                    Write-Verbose "Get-SPCOrphanedUser: Skipping system/redirect site $($site.Url) ($($site.Template))"
                     continue
                 }
                 

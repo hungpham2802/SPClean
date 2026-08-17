@@ -41,7 +41,10 @@ function Get-SPCGuestAccess {
             $sites = @()
             if ([string]::IsNullOrEmpty($SiteUrl)) {
                 Write-Verbose "No SiteUrl provided. Fetching all sites in the tenant..."
-                $sites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext | Select-Object -ExpandProperty Url
+                $rawSites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext
+                $sites = @($rawSites | Where-Object { 
+                    $null -eq $_.Template -or ($_.Template -notlike 'REDIRECTSITE#*' -and $_.Template -notlike 'POINTPUBLISHINGHUB#*')
+                } | Select-Object -ExpandProperty Url)
             } else {
                 $sites = @($SiteUrl)
             }

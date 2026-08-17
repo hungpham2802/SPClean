@@ -54,7 +54,7 @@ function Invoke-SPCPermissionAnalytics {
         $MissingOwnerSiteCount      = 0
 
         foreach ($site in $tenantSites) {
-            if ($site.Template -like 'REDIRECTSITE#*') { continue }
+            if ($site.Template -like 'REDIRECTSITE#*' -or $site.Template -like 'POINTPUBLISHINGHUB#*') { continue }
             
             # Missing Owner check
             if ([string]::IsNullOrWhiteSpace($site.Owner)) {

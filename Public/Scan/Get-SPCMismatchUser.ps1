@@ -154,7 +154,7 @@ function Get-SPCMismatchUser {
         if ($PSCmdlet.ParameterSetName -eq 'AllSites') {
             $tenantSites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext -ErrorAction Stop
             foreach ($site in $tenantSites) {
-                if ($site.Template -like 'REDIRECTSITE#*') { continue }
+                if ($site.Template -like 'REDIRECTSITE#*' -or $site.Template -like 'POINTPUBLISHINGHUB#*') { continue }
                 $pendingSites.Add($site.Url)
             }
         }

@@ -44,7 +44,10 @@ function Get-SPCOverPermissionedUser {
             }
             else {
                 Write-Verbose "Fetching all tenant sites..."
-                $sitesToScan = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext | Select-Object -ExpandProperty Url
+                $rawSites = Get-PnPTenantSite -Connection $script:SPCContext.PnPContext
+                $sitesToScan = @($rawSites | Where-Object { 
+                    $null -eq $_.Template -or ($_.Template -notlike 'REDIRECTSITE#*' -and $_.Template -notlike 'POINTPUBLISHINGHUB#*')
+                } | Select-Object -ExpandProperty Url)
             }
 
             $totalSites = $sitesToScan.Count
