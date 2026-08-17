@@ -29,16 +29,27 @@ Describe 'Invoke-SPCTempElevationInternal' {
         }
     }
 
-    Context 'Strategy 2: Graph Group Owner Fallback when CSOM is Unauthorized' {
-        It 'Elevates operator to M365 Group Owner via Graph when CSOM throws unauthorized' {
+    Context 'Strategy 2: REST /_api/SPO.Tenant/SetSiteAdmin' {
+        It 'Elevates operator to SCA via Tenant REST API when Set-PnPTenantSite fails' {
             Mock Set-PnPTenantSite { throw 'Attempted to perform an unauthorized operation.' }
+            Mock Invoke-PnPSPRestMethod { return [PSCustomObject]@{ value = $true } }
+            Mock Start-Sleep {}
+
+            $res = Invoke-SPCTempElevationInternal -SiteUrl 'https://contoso.sharepoint.com/sites/TestSite'
+            $res.Success | Should -BeTrue
+            $res.ElevationType | Should -Be 'REST_SCA'
+            Should -Invoke -CommandName Invoke-PnPSPRestMethod -Times 1 -Exactly
+        }
+    }
+
+    Context 'Strategy 3: Graph Group Owner Fallback' {
+        It 'Elevates operator to M365 Group Owner via Graph when CSOM and REST throw unauthorized' {
+            Mock Set-PnPTenantSite { throw 'Attempted to perform an unauthorized operation.' }
+            Mock Invoke-PnPSPRestMethod { throw 'Unauthorized' }
             Mock Start-Sleep {}
             Mock Invoke-RestMethod {
                 param($Uri, $Method, $Headers, $Body)
-                if ($Uri -match 'sites/contoso.sharepoint.com:/sites/TestGroup') {
-                    return [PSCustomObject]@{ id = 'site-123' }
-                }
-                if ($Uri -match 'groups\?\$filter=mailNickname eq') {
+                if ($Uri -match 'groups\?\$filter=') {
                     return [PSCustomObject]@{ value = @([PSCustomObject]@{ id = 'group-456' }) }
                 }
                 if ($Uri -match 'users/admin@contoso.com') {
@@ -57,15 +68,45 @@ Describe 'Invoke-SPCTempElevationInternal' {
         }
     }
 
+    Context 'Strategy 4: Graph Site Permissions API Fallback' {
+        It 'Elevates operator via Graph /sites/{id}/permissions when other strategies fail' {
+            Mock Set-PnPTenantSite { throw 'Unauthorized' }
+            Mock Invoke-PnPSPRestMethod { throw 'Unauthorized' }
+            Mock Start-Sleep {}
+            Mock Invoke-RestMethod {
+                param($Uri, $Method, $Headers, $Body)
+                if ($Uri -match 'groups\?\$filter=') {
+                    return [PSCustomObject]@{ value = @() }
+                }
+                if ($Uri -match 'sites/contoso.sharepoint.com:/sites/TestSite\?\$select=id') {
+                    return [PSCustomObject]@{ id = 'site-id-999' }
+                }
+                if ($Uri -match 'users/admin@contoso.com') {
+                    return [PSCustomObject]@{ id = 'user-oid-789'; displayName = 'Admin User'; userPrincipalName = 'admin@contoso.com' }
+                }
+                if ($Uri -match 'sites/site-id-999/permissions') {
+                    return [PSCustomObject]@{ id = 'perm-id-111' }
+                }
+                return $null
+            }
+
+            $res = Invoke-SPCTempElevationInternal -SiteUrl 'https://contoso.sharepoint.com/sites/TestSite'
+            $res.Success | Should -BeTrue
+            $res.ElevationType | Should -Be 'GraphSitePerm'
+            $res.PermissionId | Should -Be 'perm-id-111'
+        }
+    }
+
     Context 'Graceful Failure when all strategies are unauthorized' {
         It 'Returns structured failure object without throwing terminating error' {
             Mock Set-PnPTenantSite { throw 'Attempted to perform an unauthorized operation.' }
+            Mock Invoke-PnPSPRestMethod { throw 'Unauthorized' }
             Mock Invoke-RestMethod { throw 'Unauthorized Graph call' }
 
             $res = Invoke-SPCTempElevationInternal -SiteUrl 'https://contoso.sharepoint.com/sites/StrictSite'
             $res.Success | Should -BeFalse
             $res.ElevationType | Should -Be 'None'
-            $res.ErrorMessage | Should -Match 'unauthorized'
+            $res.ErrorMessage | Should -Match 'All elevation strategies failed'
         }
     }
 
@@ -81,6 +122,19 @@ Describe 'Invoke-SPCTempElevationInternal' {
 
             Undo-SPCTempElevationInternal -ElevationRecord $rec -SiteConnection 'conn'
             Should -Invoke -CommandName Remove-PnPSiteCollectionAdmin -Times 1 -Exactly
+        }
+
+        It 'Calls REST SPO.Tenant for REST_SCA elevation rollback' {
+            Mock Invoke-PnPSPRestMethod {}
+            $rec = [PSCustomObject]@{
+                Success       = $true
+                ElevationType = 'REST_SCA'
+                SiteUrl       = 'https://contoso.sharepoint.com/sites/TestSite'
+                OperatorUPN   = 'admin@contoso.com'
+            }
+
+            Undo-SPCTempElevationInternal -ElevationRecord $rec -SiteConnection 'conn'
+            Should -Invoke -CommandName Invoke-PnPSPRestMethod -Times 1 -Exactly
         }
 
         It 'Removes Graph group owner for GroupOwner elevation' {
@@ -102,6 +156,21 @@ Describe 'Invoke-SPCTempElevationInternal' {
 
             Undo-SPCTempElevationInternal -ElevationRecord $rec -SiteConnection $null
             Should -Invoke -CommandName Invoke-RestMethod -Times 2
+        }
+
+        It 'Removes Graph site permissions for GraphSitePerm elevation' {
+            Mock Invoke-RestMethod {}
+            $rec = [PSCustomObject]@{
+                Success       = $true
+                ElevationType = 'GraphSitePerm'
+                SiteUrl       = 'https://contoso.sharepoint.com/sites/TestSite'
+                OperatorUPN   = 'admin@contoso.com'
+                GroupId       = 'site-id-999'
+                PermissionId  = 'perm-id-111'
+            }
+
+            Undo-SPCTempElevationInternal -ElevationRecord $rec -SiteConnection $null
+            Should -Invoke -CommandName Invoke-RestMethod -Times 1 -Exactly
         }
     }
 }
