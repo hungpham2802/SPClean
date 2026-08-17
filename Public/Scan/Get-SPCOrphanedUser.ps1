@@ -205,23 +205,23 @@ function Get-SPCOrphanedUser {
                 } catch [System.UnauthorizedAccessException], [System.Exception] {
                     if ($_.Exception.Message -match "401" -or $_.Exception.Message -match "403" -or $_.Exception.Message -match "Access denied" -or $_.Exception.Message -match "Unauthorized") {
                         if ($AddTempSiteCollectionAdmin) {
-                            if ($ctx.AuthMethod -ne 'Interactive') {
+                            $authMethod = if ($ctx.AuthMethod) { $ctx.AuthMethod } else { $ctx.AuthMode }
+                            if ($authMethod -ne 'Interactive') {
                                 Write-Error "[ERR-GOU-002] $(Get-Date -Format 'o'): Access Denied on '$currentSiteUrl'. -AddTempSiteCollectionAdmin is only supported for Interactive auth. Resource: $currentSiteUrl." -ErrorAction Continue
                                 continue
                             }
-                            Write-Verbose "Get-SPCOrphanedUser: Access Denied. Attempting to add temporary Site Collection Admin rights."
-                            try {
-                                $me = Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($ctx.GraphAccessToken)" } -ErrorAction Stop
-                                $myUPN = $me.userPrincipalName
-                                
-                                Set-PnPTenantSite -Connection $ctx.PnPContext -Url $currentSiteUrl -Owners $myUPN -ErrorAction Stop
-                                $removeSca = $true
-                                
-                                Start-Sleep -Seconds 5
-                                $siteConn = Connect-SPCSiteInternal -SiteUrl $currentSiteUrl -Context $ctx
-                                $uilUsers = Get-PnPSiteUser -Connection $siteConn -ErrorAction Stop
-                            } catch {
-                                Write-Error "[ERR-GOU-003] $(Get-Date -Format 'o'): Failed to add temporary SCA or retry on '$currentSiteUrl'. Resource: $currentSiteUrl. Details: $_" -ErrorAction Continue
+                            Write-Verbose "Get-SPCOrphanedUser: Access Denied. Attempting temporary elevation."
+                            $elevationRecord = Invoke-SPCTempElevationInternal -SiteUrl $currentSiteUrl -Context $ctx
+                            if ($elevationRecord.Success) {
+                                try {
+                                    $siteConn = Connect-SPCSiteInternal -SiteUrl $currentSiteUrl -Context $ctx
+                                    $uilUsers = Get-PnPSiteUser -Connection $siteConn -ErrorAction Stop
+                                } catch {
+                                    Write-Warning "[WARN-GOU-005] $(Get-Date -Format 'o'): Access Denied on '$currentSiteUrl'. Skipping restricted site. Details: $_"
+                                    continue
+                                }
+                            } else {
+                                Write-Warning "[WARN-GOU-005] $(Get-Date -Format 'o'): Access Denied on '$currentSiteUrl'. Skipping restricted site. Details: $($elevationRecord.ErrorMessage)"
                                 continue
                             }
                         } else {
@@ -452,9 +452,8 @@ function Get-SPCOrphanedUser {
                     $out   # SRS step 11: write to pipeline
                 }
             } finally {
-                if ($removeSca -and $myUPN) {
-                    Write-Verbose "Get-SPCOrphanedUser: Removing temporary Site Collection Admin rights for $myUPN on $currentSiteUrl"
-                    Remove-PnPSiteCollectionAdmin -Connection $siteConn -Owners $myUPN -ErrorAction SilentlyContinue
+                if ($elevationRecord -and $elevationRecord.Success) {
+                    Undo-SPCTempElevationInternal -ElevationRecord $elevationRecord -SiteConnection $siteConn -Context $ctx
                 }
             }
 

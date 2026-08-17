@@ -154,30 +154,13 @@ function Get-SPCPrivilegedUser {
                                         $success = $true
                                         continue
                                     }
-                                    Write-Verbose "Get-SPCPrivilegedUser: Access Denied on '$url'. Attempting to add temporary Site Collection Admin rights."
-                                    try {
-                                        $myUPN = if ($script:SPCContext.OperatorUPN -and $script:SPCContext.OperatorUPN -notlike 'AppOnly:*') {
-                                            $script:SPCContext.OperatorUPN
-                                        } else {
-                                            try {
-                                                (Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($script:SPCContext.GraphAccessToken)" } -ErrorAction Stop).userPrincipalName
-                                            } catch {
-                                                "admin@$($script:SPCContext.TenantName).onmicrosoft.com"
-                                            }
-                                        }
-
-                                        if (-not $myUPN) {
-                                            throw "Unable to determine current operator UPN for temporary SCA assignment."
-                                        }
-
-                                        Set-PnPTenantSite -Connection $script:SPCContext.PnPContext -Url $url -Owners $myUPN -ErrorAction Stop
-                                        $removeSca = $true
-                                        Start-Sleep -Seconds 5
-
+                                    Write-Verbose "Get-SPCPrivilegedUser: Access Denied on '$url'. Attempting temporary elevation."
+                                    $elevationRecord = Invoke-SPCTempElevationInternal -SiteUrl $url -Context $script:SPCContext
+                                    if ($elevationRecord.Success) {
                                         $siteConnection = Connect-SPCSiteInternal -SiteUrl $url -Context $script:SPCContext
                                         # Retry the scan in next while iteration
-                                    } catch {
-                                        Write-Error "[ERR-GPU-005] $(Get-Date -Format 'o'): Failed to add temporary SCA or retry on '$url'. Resource: $url. Details: $_" -ErrorAction Continue
+                                    } else {
+                                        Write-Warning "[WARN-GPU-005] $(Get-Date -Format 'o'): Access Denied on site collection '$url'. Skipping restricted site. Details: $($elevationRecord.ErrorMessage)"
                                         $success = $true
                                     }
                                 } else {
@@ -193,9 +176,8 @@ function Get-SPCPrivilegedUser {
                     }
                 }
                 finally {
-                    if ($removeSca -and $myUPN) {
-                        Write-Verbose "Get-SPCPrivilegedUser: Removing temporary Site Collection Admin rights for $myUPN on $url"
-                        Remove-PnPSiteCollectionAdmin -Connection $siteConnection -Owners $myUPN -ErrorAction SilentlyContinue
+                    if ($elevationRecord -and $elevationRecord.Success) {
+                        Undo-SPCTempElevationInternal -ElevationRecord $elevationRecord -SiteConnection $siteConnection -Context $script:SPCContext
                     }
                 }
             }

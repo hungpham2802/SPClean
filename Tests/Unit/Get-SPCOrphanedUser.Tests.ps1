@@ -1,10 +1,12 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
 BeforeAll {
+    . (Join-Path $PSScriptRoot '../../Private/PnPWrappers.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Get-SPCRiskLevel.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Invoke-SPCGraphBatch.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Connect-SPCSiteInternal.ps1')
+    . (Join-Path $PSScriptRoot '../../Private/Invoke-SPCTempElevationInternal.ps1')
     . (Join-Path $PSScriptRoot '../../Public/Scan/Get-SPCOrphanedUser.ps1')
 
     # ── Shared fake data ────────────────────────────────────────────────────────

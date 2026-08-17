@@ -42,30 +42,13 @@ function Get-SPCLibraryBrokenInheritanceInternal {
                                 Write-Error "[ERR-GBI-004] $(Get-Date -Format 'o'): Access Denied on '$SiteUrl'. -AddTempSiteCollectionAdmin is only supported for Interactive auth. Resource: $SiteUrl." -ErrorAction Continue
                                 return
                             }
-                            Write-Verbose "Get-SPCLibraryBrokenInheritanceInternal: Access Denied on '$SiteUrl'. Attempting to add temporary Site Collection Admin rights."
-                            try {
-                                $myUPN = if ($script:SPCContext.OperatorUPN -and $script:SPCContext.OperatorUPN -notlike 'AppOnly:*') {
-                                    $script:SPCContext.OperatorUPN
-                                } else {
-                                    try {
-                                        (Invoke-RestMethod -Uri "https://graph.microsoft.com/v1.0/me" -Headers @{ Authorization = "Bearer $($script:SPCContext.GraphAccessToken)" } -ErrorAction Stop).userPrincipalName
-                                    } catch {
-                                        "admin@$($script:SPCContext.TenantName).onmicrosoft.com"
-                                    }
-                                }
-
-                                if (-not $myUPN) {
-                                    throw "Unable to determine current operator UPN for temporary SCA assignment."
-                                }
-
-                                Set-PnPTenantSite -Connection $script:SPCContext.PnPContext -Url $SiteUrl -Owners $myUPN -ErrorAction Stop
-                                $removeSca = $true
-                                Start-Sleep -Seconds 5
+                            Write-Verbose "Get-SPCLibraryBrokenInheritanceInternal: Access Denied on '$SiteUrl'. Attempting temporary elevation."
+                            $elevationRecord = Invoke-SPCTempElevationInternal -SiteUrl $SiteUrl -Context $script:SPCContext
+                            if ($elevationRecord.Success) {
                                 $retryConnection = $true
                                 continue
-                            }
-                            catch {
-                                Write-Error "ERR-201: Failed to add temporary SCA or retry on $SiteUrl. Details: $_"
+                            } else {
+                                Write-Warning "[WARN-GBI-005] $(Get-Date -Format 'o'): Access Denied on '$SiteUrl'. Skipping restricted site. Details: $($elevationRecord.ErrorMessage)"
                                 return
                             }
                         } else {
@@ -138,9 +121,8 @@ function Get-SPCLibraryBrokenInheritanceInternal {
                 }
             }
         } finally {
-            if ($removeSca -and $myUPN) {
-                Write-Verbose "Get-SPCLibraryBrokenInheritanceInternal: Removing temporary Site Collection Admin rights for $myUPN on $SiteUrl"
-                Remove-PnPSiteCollectionAdmin -Connection $siteConn -Owners $myUPN -ErrorAction SilentlyContinue
+            if ($elevationRecord -and $elevationRecord.Success) {
+                Undo-SPCTempElevationInternal -ElevationRecord $elevationRecord -SiteConnection $siteConn -Context $script:SPCContext
             }
         }
     }

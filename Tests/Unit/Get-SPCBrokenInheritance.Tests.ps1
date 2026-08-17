@@ -4,6 +4,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../../Private/PnPWrappers.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Connect-SPCSiteInternal.ps1')
+    . (Join-Path $PSScriptRoot '../../Private/Invoke-SPCTempElevationInternal.ps1')
     . (Join-Path $PSScriptRoot '../../Private/Get-SPCLibraryBrokenInheritanceInternal.ps1')
     . (Join-Path $PSScriptRoot '../../Public/Scan/Get-SPCBrokenInheritance.ps1')
 }

@@ -5,6 +5,7 @@ Describe 'Get-SPCOverPermissionedUser' {
         . (Join-Path $PSScriptRoot '../../Private/PnPWrappers.ps1')
         . (Join-Path $PSScriptRoot '../../Private/Test-SPCConnection.ps1')
         . (Join-Path $PSScriptRoot '../../Private/Connect-SPCSiteInternal.ps1')
+        . (Join-Path $PSScriptRoot '../../Private/Invoke-SPCTempElevationInternal.ps1')
         . (Join-Path $PSScriptRoot '../../Public/Scan/Get-SPCOverPermissionedUser.ps1')
         $script:sut = (Join-Path $PSScriptRoot '../../Public/Scan/Get-SPCOverPermissionedUser.ps1')
     }
@@ -12,6 +13,7 @@ Describe 'Get-SPCOverPermissionedUser' {
     BeforeEach {
         $script:SPCContext = [PSCustomObject]@{
             TenantName       = 'tenant'
+            OperatorUPN      = 'admin@tenant.onmicrosoft.com'
             AuthMethod       = 'Interactive'
             GraphAccessToken = 'mock_token'
             PnPContext       = [PSCustomObject]@{ Url = 'https://tenant-admin.sharepoint.com' }
