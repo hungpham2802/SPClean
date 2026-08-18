@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/); version
 
 ---
 
+## [2.2.0] - 2026-08-18
+
+### Added
+- **Interactive Mode Temp Elevation (`-AddTempSiteCollectionAdmin`)**: Integrated automated Site Collection Admin elevation and teardown workflows across all security scanners (`Get-SPCPrivilegedUser`, `Get-SPCGuestAccess`, `Get-SPCOverPermissionedUser`, `Get-SPCBrokenInheritance`, `Invoke-SPCDashboardReport`, `Invoke-SPCPermissionAnalytics`), allowing seamless scanning of restricted/private sites in Delegated/Interactive mode.
+- **Auto Token Lifecycle Refresh**: Built-in automatic `401 Unauthorized / Token Expired` detection and renewal in `Invoke-SPCGraphBatch` and proactive 30-minute renewal in `Get-SPCOrphanedUser` for resilient multi-hour tenant scans.
+
+### Fixed
+- **Access Denied Error Matching**: Broadened error classification regex to catch CSOM HRESULT `0x80070005 (E_ACCESSDENIED)` and `"Access is denied"`.
+- **Site Enumeration Standardization**: Standardized site discovery across all 10 scan cmdlets to consistently filter out system redirect sites (`REDIRECTSITE#*`) and hub publishing templates (`POINTPUBLISHINGHUB#*`), ensuring consistent site counts tenant-wide.
+- **PnP 3.2.0 Compatibility**: Fixed `Get-PnPGroup` parameter mapping and enhanced `Get-PnPTenantSite` context propagation.
+
+---
+
 ## [2.1.1] - 2026-08-16
 
 ### Fixed
